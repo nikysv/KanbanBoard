@@ -28,7 +28,7 @@ const ColumnModal = ({ isOpen, onClose, onSave }) => {
         </div>
       </div>
     );
-  };  
+  };
   
   export default ColumnModal;
   

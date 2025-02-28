@@ -22,8 +22,6 @@ const KanbanBoard = () => {
         title: "Revisar documentos",
         description: "Revisar y firmar los documentos legales",
         dueDate: dayjs().add(5, "day").format("YYYY-MM-DD"),
-        columnId: "1",
-        isCompleted: true,
       },
     ],
     2: [
@@ -81,7 +79,7 @@ const KanbanBoard = () => {
   const addColumn = (title) => {
     const newColumn = { id: Date.now().toString(), title };
     setColumns([...columns, newColumn]);
-    setTasks((prevTasks) => ({ ...prevTasks, [newColumn.id]: [] })); // Initialize empty array for new column
+    setTasks((prevTasks) => ({ ...prevTasks, [newColumn.id]: [] })); // ✅ Inicializa la nueva columna sin tareas
     closeColumnModal();
   };
 
@@ -98,127 +96,56 @@ const KanbanBoard = () => {
   };
 
   const addTask = (taskTitle, columnId) => {
-    if (!columnId) return;
+    if (!columnId) return; // ✅ Evita que se agregue si `columnId` no está definido
 
     const newTask = {
       id: Date.now().toString(),
       title: taskTitle,
       description: "",
       dueDate: dayjs().format("YYYY-MM-DD"),
-      columnId, // Add columnId to the task
-      isCompleted: false,
     };
 
-    setTasks((prevTasks) => {
-      const columnTasks = prevTasks[columnId] || [];
-      return {
-        ...prevTasks,
-        [columnId]: [...columnTasks, newTask],
-      };
-    });
+    setTasks((prevTasks) => ({
+      ...prevTasks,
+      [columnId]: [...prevTasks[columnId], newTask], // ✅ Agrega la tarea en la columna correcta
+    }));
 
     closeModal();
   };
 
   const updateTask = (updatedTask) => {
-    if (!updatedTask || !updatedTask.columnId) return;
-
-    setTasks((prevTasks) => {
-      const columnTasks = prevTasks[updatedTask.columnId] || [];
-      return {
-        ...prevTasks,
-        [updatedTask.columnId]: columnTasks.map((task) =>
-          task.id === updatedTask.id ? { ...updatedTask } : task
-        ),
-      };
-    });
+    setTasks((prevTasks) => ({
+      ...prevTasks,
+      [updatedTask.columnId]: prevTasks[updatedTask.columnId].map((task) =>
+        task.id === updatedTask.id ? updatedTask : task
+      ),
+    }));
   };
 
   const deleteTask = (taskId, columnId) => {
-    if (!taskId || !columnId) return;
-
-    setTasks((prevTasks) => {
-      const columnTasks = prevTasks[columnId] || [];
-      return {
-        ...prevTasks,
-        [columnId]: columnTasks.filter((task) => task.id !== taskId),
-      };
-    });
+    setTasks((prevTasks) => ({
+      ...prevTasks,
+      [columnId]: prevTasks[columnId].filter((task) => task.id !== taskId),
+    }));
   };
 
   const onDragEnd = (result) => {
-    const { destination, source, draggableId, type } = result;
+    if (!result.destination) return;
 
-    if (!destination) return;
+    const reorderedColumns = [...columns];
+    const [movedColumn] = reorderedColumns.splice(result.source.index, 1);
+    reorderedColumns.splice(result.destination.index, 0, movedColumn);
 
-    // If dropped in the same position
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    ) {
-      return;
-    }
-
-    // Handle column reordering
-    if (type === "column") {
-      const reorderedColumns = [...columns];
-      const [movedColumn] = reorderedColumns.splice(source.index, 1);
-      reorderedColumns.splice(destination.index, 0, movedColumn);
-      setColumns(reorderedColumns);
-      return;
-    }
-
-    // Handle task reordering
-    const sourceColumn = source.droppableId;
-    const destinationColumn = destination.droppableId;
-
-    // Moving within the same column
-    if (sourceColumn === destinationColumn) {
-      const columnTasks = [...(tasks[sourceColumn] || [])];
-      const [movedTask] = columnTasks.splice(source.index, 1);
-      columnTasks.splice(destination.index, 0, {
-        ...movedTask,
-        columnId: sourceColumn,
-      });
-
-      setTasks({
-        ...tasks,
-        [sourceColumn]: columnTasks,
-      });
-    } else {
-      // Moving to a different column
-      const sourceColumnTasks = [...(tasks[sourceColumn] || [])];
-      const destinationColumnTasks = [...(tasks[destinationColumn] || [])];
-      const [movedTask] = sourceColumnTasks.splice(source.index, 1);
-
-      // Update the task with the new column ID
-      const updatedTask = {
-        ...movedTask,
-        columnId: destinationColumn,
-      };
-
-      destinationColumnTasks.splice(destination.index, 0, updatedTask);
-
-      setTasks({
-        ...tasks,
-        [sourceColumn]: sourceColumnTasks,
-        [destinationColumn]: destinationColumnTasks,
-      });
-    }
+    setColumns(reorderedColumns);
   };
 
-  const completeTask = (updatedTask) => {
-    if (!updatedTask || !updatedTask.columnId) return;
-
-    setTasks((prevTasks) => {
-      const columnTasks = prevTasks[updatedTask.columnId] || [];
-      return {
-        ...prevTasks,
-        [updatedTask.columnId]: columnTasks.map((task) =>
-          task.id === updatedTask.id ? { ...task, isCompleted: true } : task
-        ),
-      };
-    });
+  const completeTask = (taskId, columnId) => {
+    setTasks((prevTasks) => ({
+      ...prevTasks,
+      [columnId]: prevTasks[columnId].map((task) =>
+        task.id === taskId ? { ...task, isCompleted: true } : task
+      ),
+    }));
   };
 
   return (
@@ -230,7 +157,7 @@ const KanbanBoard = () => {
         + Agregar Columna
       </button>
       <DragDropContext onDragEnd={onDragEnd}>
-        <Droppable droppableId="board" direction="horizontal" type="column">
+        <Droppable droppableId="columns" direction="horizontal">
           {(provided) => (
             <div
               className="flex gap-4 p-5 min-h-24 w-full justify-center"
@@ -248,7 +175,7 @@ const KanbanBoard = () => {
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                       {...provided.dragHandleProps}
-                      className="w-80 bg-stone-100 p-4 rounded-lg shadow-md relative flex flex-col"
+                      className="w-64 bg-stone-100 p-4 rounded-lg shadow-md relative flex flex-col"
                     >
                       {/* Header con título, número y eliminar */}
                       <div className="flex justify-between items-center">
@@ -260,9 +187,9 @@ const KanbanBoard = () => {
                             className="w-6 h-6 flex items-center justify-center rounded-full text-black text-sm font-bold"
                             style={{
                               backgroundColor: generateColor(index, 80),
-                            }}
+                            }} // 🎨 Color pastel dinámico
                           >
-                            {(tasks[column.id] || []).length}
+                            {tasks[column.id]?.length || 0}
                           </div>
                           <button
                             className="p-2 hover:bg-gray-200 rounded-md"
@@ -273,46 +200,25 @@ const KanbanBoard = () => {
                         </div>
                       </div>
 
+                      {/* Línea divisoria con el mismo color del número */}
                       <hr
                         className="w-full my-3 border-t-2"
-                        style={{ borderColor: generateColor(index, 60) }}
+                        style={{ borderColor: generateColor(index, 60) }} // 🎨 Color más oscuro para la línea
                       />
 
-                      <Droppable droppableId={column.id} type="task">
-                        {(provided) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.droppableProps}
-                            className="max-h-48 overflow-y-auto space-y-2 pr-2 scrollbar-hide px-2"
-                          >
-                            {(tasks[column.id] || []).map((task, taskIndex) => (
-                              <Draggable
-                                key={task.id}
-                                draggableId={task.id}
-                                index={taskIndex}
-                              >
-                                {(provided) => (
-                                  <div
-                                    ref={provided.innerRef}
-                                    {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                  >
-                                    <TaskCard
-                                      task={task}
-                                      onView={openViewModal}
-                                      onDelete={() =>
-                                        deleteTask(task.id, column.id)
-                                      }
-                                    />
-                                  </div>
-                                )}
-                              </Draggable>
-                            ))}
-                            {provided.placeholder}
-                          </div>
-                        )}
-                      </Droppable>
+                      {/* ✅ Contenedor de tareas */}
+                      <div className="max-h-48 overflow-y-auto space-y-2 pr-2 scrollbar-hide">
+                        {tasks[column.id]?.map((task) => (
+                          <TaskCard
+                            key={task.id}
+                            task={task}
+                            onView={openViewModal}
+                            onDelete={() => deleteTask(task.id, column.id)}
+                          />
+                        ))}
+                      </div>
 
+                      {/* ✅ Botón para agregar tareas */}
                       <div className="mt-3">
                         <button
                           onClick={() => openModal(column.id)}
@@ -346,7 +252,6 @@ const KanbanBoard = () => {
         onClose={closeViewModal}
         task={selectedTask}
         onSave={updateTask}
-        onComplete={completeTask} // ✅ Asegura que se pasa la función
       />
     </div>
   );
