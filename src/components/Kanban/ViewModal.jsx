@@ -39,7 +39,8 @@ const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
   // Marcar tarea como completada
   const handleComplete = () => {
     setIsCompleted(true);
-    onComplete(task.id);
+    onComplete(task.id, task.columnId);
+    onClose();
   };
 
   return (
@@ -75,7 +76,11 @@ const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
         />
 
         {/* Estado de la Tarea */}
-        <p className={`text-sm font-semibold mb-4 ${isCompleted ? "text-green-600" : "text-gray-500"}`}>
+        <p
+          className={`text-sm font-semibold mb-4 ${
+            isCompleted ? "text-green-600" : "text-gray-500"
+          }`}
+        >
           Estado: {isCompleted ? "✔ Completada" : "Pendiente"}
         </p>
 
@@ -110,15 +115,24 @@ const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
 
         {/* Botones */}
         <div className="flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400"
+          >
             Cerrar
           </button>
           {!isCompleted && (
-            <button onClick={handleComplete} className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600">
+            <button
+              onClick={handleComplete}
+              className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+            >
               Completar
             </button>
           )}
-          <button onClick={handleSave} className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
             Guardar Cambios
           </button>
         </div>

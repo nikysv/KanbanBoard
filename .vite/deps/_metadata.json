@@ -1,0 +1,58 @@
+{
+  "hash": "ee9aa83e",
+  "configHash": "51cbd703",
+  "lockfileHash": "c98baefd",
+  "browserHash": "7cf2acda",
+  "optimized": {
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "2487be61",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "d24fc708",
+      "needsInterop": true
+    },
+    "@hello-pangea/dnd": {
+      "src": "../../node_modules/@hello-pangea/dnd/dist/dnd.esm.js",
+      "file": "@hello-pangea_dnd.js",
+      "fileHash": "a57c60c2",
+      "needsInterop": false
+    },
+    "dayjs": {
+      "src": "../../node_modules/dayjs/dayjs.min.js",
+      "file": "dayjs.js",
+      "fileHash": "a91357f6",
+      "needsInterop": true
+    },
+    "dayjs/plugin/relativeTime": {
+      "src": "../../node_modules/dayjs/plugin/relativeTime.js",
+      "file": "dayjs_plugin_relativeTime.js",
+      "fileHash": "07a26181",
+      "needsInterop": true
+    },
+    "dayjs/locale/es": {
+      "src": "../../node_modules/dayjs/locale/es.js",
+      "file": "dayjs_locale_es.js",
+      "fileHash": "71f3cbe2",
+      "needsInterop": true
+    }
+  },
+  "chunks": {
+    "chunk-DNLHEKFE": {
+      "file": "chunk-DNLHEKFE.js"
+    },
+    "chunk-NVAVHLZZ": {
+      "file": "chunk-NVAVHLZZ.js"
+    },
+    "chunk-VWVCGJ7V": {
+      "file": "chunk-VWVCGJ7V.js"
+    },
+    "chunk-5WRI5ZAA": {
+      "file": "chunk-5WRI5ZAA.js"
+    }
+  }
+}

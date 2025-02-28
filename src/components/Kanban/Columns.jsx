@@ -8,6 +8,50 @@ import TaskCard from "./TaskCard";
 import ColumnModal from "./ColumnModal";
 import dayjs from "dayjs";
 
+const DeleteColumnModal = ({
+  isOpen,
+  onClose,
+  onConfirm,
+  columnTitle,
+  tasksCount,
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+      <div className="bg-white p-6 rounded-lg shadow-lg w-96">
+        <h3 className="text-lg font-semibold mb-4">
+          Confirmar eliminación de columna
+        </h3>
+        <p className="text-gray-600 mb-4">
+          ¿Estás seguro de que deseas eliminar la columna "{columnTitle}"?
+        </p>
+        {tasksCount > 0 && (
+          <p className="text-red-600 mb-6">
+            ⚠️ Esta columna contiene {tasksCount}{" "}
+            {tasksCount === 1 ? "tarea" : "tareas"} que también{" "}
+            {tasksCount === 1 ? "será eliminada" : "serán eliminadas"}.
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400"
+          >
+            Cancelar
+          </button>
+          <button
+            onClick={onConfirm}
+            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+          >
+            Eliminar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const KanbanBoard = () => {
   const [columns, setColumns] = useState([
     { id: "1", title: "Pendiente" },
@@ -30,6 +74,7 @@ const KanbanBoard = () => {
         title: "Desarrollar API",
         description: "Implementar endpoints de usuario",
         dueDate: dayjs().add(7, "day").format("YYYY-MM-DD"),
+        isCompleted: true,
       },
     ],
     3: [
@@ -45,8 +90,10 @@ const KanbanBoard = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [columnModalOpen, setColumnModalOpen] = useState(false);
+  const [deleteColumnModalOpen, setDeleteColumnModalOpen] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [columnToDelete, setColumnToDelete] = useState(null);
 
   const generateColor = (index, lightness = 80) => {
     const hue = (index * 137) % 360; // Espaciado uniforme en la rueda de colores
@@ -83,16 +130,32 @@ const KanbanBoard = () => {
     closeColumnModal();
   };
 
-  const deleteColumn = (columnId) => {
-    setColumns((prevColumns) =>
-      prevColumns.filter((column) => column.id !== columnId)
-    );
+  const handleDeleteColumnClick = (columnId, e) => {
+    e.stopPropagation();
+    const column = columns.find((col) => col.id === columnId);
+    setColumnToDelete(column);
+    setDeleteColumnModalOpen(true);
+  };
 
-    setTasks((prevTasks) => {
-      const updatedTasks = { ...prevTasks };
-      delete updatedTasks[columnId];
-      return updatedTasks;
-    });
+  const handleConfirmDeleteColumn = () => {
+    if (columnToDelete) {
+      setColumns((prevColumns) =>
+        prevColumns.filter((column) => column.id !== columnToDelete.id)
+      );
+
+      setTasks((prevTasks) => {
+        const updatedTasks = { ...prevTasks };
+        delete updatedTasks[columnToDelete.id];
+        return updatedTasks;
+      });
+    }
+    setDeleteColumnModalOpen(false);
+    setColumnToDelete(null);
+  };
+
+  const handleCancelDeleteColumn = () => {
+    setDeleteColumnModalOpen(false);
+    setColumnToDelete(null);
   };
 
   const addTask = (taskTitle, columnId) => {
@@ -149,7 +212,7 @@ const KanbanBoard = () => {
   };
 
   return (
-    <div className="p-5">
+    <div className="container mx-auto p-5">
       <button
         onClick={openColumnModal}
         className="mb-4 px-4 py-2 bg-sky-500 text-white rounded-md hover:bg-slate-400"
@@ -160,7 +223,7 @@ const KanbanBoard = () => {
         <Droppable droppableId="columns" direction="horizontal">
           {(provided) => (
             <div
-              className="flex gap-4 p-5 min-h-24 w-full justify-center"
+              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-5"
               {...provided.droppableProps}
               ref={provided.innerRef}
             >
@@ -175,10 +238,10 @@ const KanbanBoard = () => {
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                       {...provided.dragHandleProps}
-                      className="w-64 bg-stone-100 p-4 rounded-lg shadow-md relative flex flex-col"
+                      className="bg-stone-100 p-4 rounded-lg shadow-md relative flex flex-col w-full h-[280px]"
                     >
                       {/* Header con título, número y eliminar */}
-                      <div className="flex justify-between items-center">
+                      <div className="flex justify-between items-center mb-2">
                         <h2 className="text-lg font-semibold">
                           {column.title}
                         </h2>
@@ -187,33 +250,34 @@ const KanbanBoard = () => {
                             className="w-6 h-6 flex items-center justify-center rounded-full text-black text-sm font-bold"
                             style={{
                               backgroundColor: generateColor(index, 80),
-                            }} // 🎨 Color pastel dinámico
+                            }}
                           >
                             {tasks[column.id]?.length || 0}
                           </div>
                           <button
-                            className="p-2 hover:bg-gray-200 rounded-md"
-                            onClick={() => deleteColumn(column.id)}
+                            className="p-1.5 hover:bg-gray-200 rounded-md"
+                            onClick={(e) =>
+                              handleDeleteColumnClick(column.id, e)
+                            }
                           >
-                            <TrashIcon size={24} color="black" />
+                            <TrashIcon size={20} color="black" />
                           </button>
                         </div>
                       </div>
 
-                      {/* Línea divisoria con el mismo color del número */}
                       <hr
-                        className="w-full my-3 border-t-2"
-                        style={{ borderColor: generateColor(index, 60) }} // 🎨 Color más oscuro para la línea
+                        className="w-full mb-4 border-t-2"
+                        style={{ borderColor: generateColor(index, 60) }}
                       />
 
-                      {/* ✅ Contenedor de tareas */}
-                      <div className="max-h-48 overflow-y-auto space-y-2 pr-2 scrollbar-hide">
+                      {/* Contenedor de tareas con scroll */}
+                      <div className="flex-1 overflow-y-auto space-y-2 pr-2 scrollbar-hide">
                         {tasks[column.id]?.map((task) => (
                           <TaskCard
                             key={task.id}
-                            task={task}
+                            task={{ ...task, columnId: column.id }}
                             onView={openViewModal}
-                            onDelete={() => deleteTask(task.id, column.id)}
+                            onDelete={(taskId) => deleteTask(taskId, column.id)}
                           />
                         ))}
                       </div>
@@ -252,6 +316,14 @@ const KanbanBoard = () => {
         onClose={closeViewModal}
         task={selectedTask}
         onSave={updateTask}
+        onComplete={completeTask}
+      />
+      <DeleteColumnModal
+        isOpen={deleteColumnModalOpen}
+        onClose={handleCancelDeleteColumn}
+        onConfirm={handleConfirmDeleteColumn}
+        columnTitle={columnToDelete?.title}
+        tasksCount={columnToDelete ? tasks[columnToDelete.id]?.length || 0 : 0}
       />
     </div>
   );
