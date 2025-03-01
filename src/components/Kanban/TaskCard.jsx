@@ -37,7 +37,7 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, taskTitle }) => {
   );
 };
 
-const TaskCard = ({ task, onView, onDelete }) => {
+const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   // Función para calcular el color de la fecha
@@ -78,6 +78,14 @@ const TaskCard = ({ task, onView, onDelete }) => {
     if (e) e.stopPropagation();
     setShowDeleteModal(false);
   }, []);
+
+  const handleCommentsClick = useCallback(
+    (e) => {
+      e.stopPropagation();
+      onOpenComments(task);
+    },
+    [onOpenComments, task]
+  );
 
   return (
     <>
@@ -140,8 +148,16 @@ const TaskCard = ({ task, onView, onDelete }) => {
 
           {/* Acciones */}
           <div className="flex items-center gap-2 ml-2">
-            <button className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
+            <button
+              className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 relative"
+              onClick={handleCommentsClick}
+            >
               💬
+              {task.comments?.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                  {task.comments.length}
+                </span>
+              )}
             </button>
             <button className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
               📂

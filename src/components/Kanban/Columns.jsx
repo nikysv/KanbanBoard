@@ -6,6 +6,7 @@ import ViewModal from "./ViewModal";
 import TaskModal from "./TaskModal";
 import TaskCard from "./TaskCard";
 import ColumnModal from "./ColumnModal";
+import ModalComments from "./ModalComments";
 import dayjs from "dayjs";
 
 const DeleteColumnModal = ({
@@ -66,6 +67,7 @@ const KanbanBoard = () => {
         title: "Revisar documentos",
         description: "Revisar y firmar los documentos legales",
         dueDate: dayjs().add(5, "day").format("YYYY-MM-DD"),
+        comments: [],
       },
     ],
     2: [
@@ -75,6 +77,7 @@ const KanbanBoard = () => {
         description: "Implementar endpoints de usuario",
         dueDate: dayjs().add(7, "day").format("YYYY-MM-DD"),
         isCompleted: true,
+        comments: [],
       },
     ],
     3: [
@@ -83,6 +86,7 @@ const KanbanBoard = () => {
         title: "Publicar reporte final",
         description: "Subir el informe de desempeño",
         dueDate: dayjs().subtract(1, "day").format("YYYY-MM-DD"),
+        comments: [],
       },
     ],
   });
@@ -91,6 +95,7 @@ const KanbanBoard = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [columnModalOpen, setColumnModalOpen] = useState(false);
   const [deleteColumnModalOpen, setDeleteColumnModalOpen] = useState(false);
+  const [commentsModalOpen, setCommentsModalOpen] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [columnToDelete, setColumnToDelete] = useState(null);
@@ -123,10 +128,13 @@ const KanbanBoard = () => {
   const openColumnModal = () => setColumnModalOpen(true); // ✅ Abrir modal de columnas
   const closeColumnModal = () => setColumnModalOpen(false);
 
-  const addColumn = (title) => {
+  const addColumn = (title, initialTasks = []) => {
     const newColumn = { id: Date.now().toString(), title };
     setColumns([...columns, newColumn]);
-    setTasks((prevTasks) => ({ ...prevTasks, [newColumn.id]: [] })); // ✅ Inicializa la nueva columna sin tareas
+    setTasks((prevTasks) => ({
+      ...prevTasks,
+      [newColumn.id]: initialTasks,
+    }));
     closeColumnModal();
   };
 
@@ -211,6 +219,25 @@ const KanbanBoard = () => {
     }));
   };
 
+  const handleOpenComments = (task) => {
+    setSelectedTask(task);
+    setCommentsModalOpen(true);
+  };
+
+  const handleCloseComments = () => {
+    setSelectedTask(null);
+    setCommentsModalOpen(false);
+  };
+
+  const handleSaveComments = (updatedTask) => {
+    setTasks((prevTasks) => ({
+      ...prevTasks,
+      [updatedTask.columnId]: prevTasks[updatedTask.columnId].map((task) =>
+        task.id === updatedTask.id ? updatedTask : task
+      ),
+    }));
+  };
+
   return (
     <div className="container mx-auto p-5">
       <button
@@ -278,6 +305,7 @@ const KanbanBoard = () => {
                             task={{ ...task, columnId: column.id }}
                             onView={openViewModal}
                             onDelete={(taskId) => deleteTask(taskId, column.id)}
+                            onOpenComments={handleOpenComments}
                           />
                         ))}
                       </div>
@@ -324,6 +352,12 @@ const KanbanBoard = () => {
         onConfirm={handleConfirmDeleteColumn}
         columnTitle={columnToDelete?.title}
         tasksCount={columnToDelete ? tasks[columnToDelete.id]?.length || 0 : 0}
+      />
+      <ModalComments
+        isOpen={commentsModalOpen}
+        onClose={handleCloseComments}
+        task={selectedTask}
+        onSave={handleSaveComments}
       />
     </div>
   );
