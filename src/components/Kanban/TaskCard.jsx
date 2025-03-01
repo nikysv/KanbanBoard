@@ -3,6 +3,8 @@ import relativeTime from "dayjs/plugin/relativeTime"; // Para calcular tiempos r
 import "dayjs/locale/es"; // Español
 import TrashIcon from "../icons/trash";
 import { useCallback, useState } from "react";
+import FileModal from "./FileModal";
+import UserInitials from "./UserInitials";
 
 dayjs.extend(relativeTime);
 dayjs.locale("es");
@@ -39,26 +41,62 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, taskTitle }) => {
 
 const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showFileModal, setShowFileModal] = useState(false);
 
-  // Función para calcular el color de la fecha
-  const getDateBadgeColor = () => {
-    if (task.isCompleted) return "bg-green-200 text-green-800"; // Si está completada, verde suave
-    if (!task.dueDate) return "bg-gray-300"; // Si no hay fecha, gris
+  // Función para calcular la prioridad basada en la fecha
+  const getPriorityInfo = () => {
+    if (!task.dueDate)
+      return { text: "Sin fecha", color: "bg-gray-200/60 text-gray-600" };
 
     const today = dayjs();
     const dueDate = dayjs(task.dueDate);
     const diffDays = dueDate.diff(today, "day");
-    const overdueDays = today.diff(dueDate, "day"); // Días de retraso
 
-    if (diffDays >= 5) return "bg-green-300 text-green-800"; // 📍 Más de una semana → Verde
-    if (diffDays >= 3) return "bg-orange-300 text-orange-800"; // 📍 3-4 días → Naranja
-    if (diffDays >= 0) return "bg-red-400 text-white"; // 📍 Hoy → Rojo
-    if (overdueDays <= 2) return "bg-red-500 text-white"; // 📍 Retrasado hasta 2 días → Rojo fuerte
-    return "bg-gray-300 text-gray-800"; // 📍 Más de 2 días de retraso → Gris
+    if (diffDays < 0)
+      return {
+        text: "Alta",
+        color: "bg-red-500/30 text-red-700",
+        icon: "🔥",
+      };
+    if (diffDays === 0)
+      return {
+        text: "Alta",
+        color: "bg-red-500/30 text-red-700",
+        icon: "⚡",
+      };
+    if (diffDays <= 3)
+      return {
+        text: "Media",
+        color: "bg-yellow-500/30 text-yellow-700",
+        icon: "⚠️",
+      };
+    return {
+      text: "Baja",
+      color: "bg-green-500/30 text-green-700",
+      icon: "✓",
+    };
+  };
+
+  // Función para calcular el color de la fecha
+  const getDateBadgeColor = () => {
+    if (task.isCompleted) return "bg-green-200 text-green-800";
+    if (!task.dueDate) return "bg-gray-300";
+
+    const today = dayjs();
+    const dueDate = dayjs(task.dueDate);
+    const diffDays = dueDate.diff(today, "day");
+    const overdueDays = today.diff(dueDate, "day");
+
+    if (diffDays >= 5) return "bg-green-300 text-green-800";
+    if (diffDays >= 3) return "bg-orange-300 text-orange-800";
+    if (diffDays >= 0) return "bg-red-400 text-white";
+    if (overdueDays <= 2) return "bg-red-500 text-white";
+    return "bg-gray-300 text-gray-800";
   };
 
   const isOverdue = dayjs(task.dueDate).isBefore(dayjs(), "day");
   const overdueDays = dayjs().diff(dayjs(task.dueDate), "day");
+  const priority = getPriorityInfo();
 
   const handleDeleteClick = useCallback((e) => {
     e.stopPropagation();
@@ -87,6 +125,11 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
     [onOpenComments, task]
   );
 
+  const handleFilesClick = useCallback((e) => {
+    e.stopPropagation();
+    setShowFileModal(true);
+  }, []);
+
   return (
     <>
       <div
@@ -95,7 +138,7 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
         }`}
         onClick={() => onView(task)}
       >
-        {/* 📍 Fecha con advertencia de retraso */}
+        {/* Fecha con advertencia de retraso */}
         <div className="flex items-center flex-wrap gap-1">
           <div
             className={`text-xs font-semibold px-2 py-1 rounded-md ${getDateBadgeColor()}`}
@@ -125,25 +168,62 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
           {task.title}
         </h3>
 
+        {/* Etiqueta de prioridad */}
+        <div className="flex items-center gap-1">
+          <span
+            className={`text-xs font-semibold px-2 py-0.5 rounded-md ${priority.color}`}
+          >
+            {priority.icon} Prioridad {priority.text}
+          </span>
+        </div>
+
+        {/* Progreso del checklist */}
+        {task.checklist && task.checklist.length > 0 && (
+          <div className="flex items-center gap-2 mt-1">
+            <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-500 transition-all duration-300"
+                style={{
+                  width: `${Math.round(
+                    (task.checklist.filter((item) => item.completed).length /
+                      task.checklist.length) *
+                      100
+                  )}%`,
+                }}
+              />
+            </div>
+            <span className="text-xs text-gray-500">
+              {task.checklist.filter((item) => item.completed).length}/
+              {task.checklist.length}
+            </span>
+          </div>
+        )}
+
         {/* Íconos de usuarios, comentarios y adjuntos */}
         <div className="flex items-center justify-between mt-1">
-          {/* Avatares */}
+          {/* Avatares de responsables */}
           <div className="flex -space-x-1.5 overflow-hidden">
-            <img
-              className="w-6 h-6 rounded-full border-2 border-white"
-              src="https://i.pravatar.cc/30?img=1"
-              alt="user1"
-            />
-            <img
-              className="w-6 h-6 rounded-full border-2 border-white"
-              src="https://i.pravatar.cc/30?img=2"
-              alt="user2"
-            />
-            <img
-              className="w-6 h-6 rounded-full border-2 border-white"
-              src="https://i.pravatar.cc/30?img=3"
-              alt="user3"
-            />
+            {task.assignees && task.assignees.length > 0 ? (
+              <>
+                {task.assignees.slice(0, 3).map((assignee, index) => (
+                  <div
+                    key={index}
+                    className="border-2 border-white rounded-full"
+                  >
+                    <UserInitials name={assignee} size="small" />
+                  </div>
+                ))}
+                {task.assignees.length > 3 && (
+                  <div className="w-6 h-6 flex items-center justify-center bg-gray-200 rounded-full border-2 border-white text-xs font-medium text-gray-600">
+                    +{task.assignees.length - 3}
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="w-6 h-6 flex items-center justify-center bg-gray-100 rounded-full text-xs text-gray-400">
+                <UserInitials name="Sin Asignar" size="small" />
+              </div>
+            )}
           </div>
 
           {/* Acciones */}
@@ -159,8 +239,16 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
                 </span>
               )}
             </button>
-            <button className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100">
+            <button
+              className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 relative"
+              onClick={handleFilesClick}
+            >
               📂
+              {task.files?.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
+                  {task.files.length}
+                </span>
+              )}
             </button>
             <button
               className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-gray-100"
@@ -177,6 +265,12 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
         onClose={handleCancelDelete}
         onConfirm={handleConfirmDelete}
         taskTitle={task.title}
+      />
+
+      <FileModal
+        isOpen={showFileModal}
+        onClose={() => setShowFileModal(false)}
+        task={task}
       />
     </>
   );

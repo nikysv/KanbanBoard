@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import dayjs from "dayjs";
+import UserInitials from "./UserInitials";
 
 const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
   if (!isOpen || !task) return null;
@@ -12,6 +13,10 @@ const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
   const [isCompleted, setIsCompleted] = useState(task.isCompleted || false);
   const [newComment, setNewComment] = useState("");
   const [comments, setComments] = useState(task.comments || []);
+  const [assignees, setAssignees] = useState(task.assignees || []);
+  const [newAssignee, setNewAssignee] = useState("");
+  const [checklist, setChecklist] = useState(task.checklist || []);
+  const [newChecklistItem, setNewChecklistItem] = useState("");
 
   // Sincronizar el modal con la tarea cuando se abre
   useEffect(() => {
@@ -21,17 +26,131 @@ const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
     setFiles(task.files || []);
     setIsCompleted(task.isCompleted || false);
     setComments(task.comments || []);
+    setAssignees(task.assignees || []);
+    setChecklist(task.checklist || []);
   }, [task]);
 
   // Manejar archivos adjuntos
   const handleFileChange = (event) => {
-    setFiles([...files, ...event.target.files]);
+    const newFiles = Array.from(event.target.files).map((file) => ({
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      uploadedBy: "Usuario", // Esto podría venir del sistema de autenticación
+      uploadedAt: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+      file: file, // El archivo en sí
+    }));
+    setFiles([...files, ...newFiles]);
   };
 
   // Eliminar un archivo adjunto antes de guardar
   const removeFile = (index) => {
     setFiles(files.filter((_, i) => i !== index));
   };
+
+  // Manejar la asignación de usuarios
+  const handleAddAssignee = () => {
+    if (!newAssignee.trim()) return;
+    if (!assignees.includes(newAssignee.trim())) {
+      setAssignees([...assignees, newAssignee.trim()]);
+
+      // Agregar comentario automático sobre la asignación
+      const assignmentComment = {
+        id: Date.now().toString(),
+        text: `👤 Se asignó a ${newAssignee.trim()}`,
+        author: "Sistema",
+        createdAt: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+        isSystemComment: true,
+      };
+      setComments([...comments, assignmentComment]);
+    }
+    setNewAssignee("");
+  };
+
+  const handleRemoveAssignee = (assignee) => {
+    setAssignees(assignees.filter((a) => a !== assignee));
+
+    // Agregar comentario automático sobre la eliminación
+    const unassignmentComment = {
+      id: Date.now().toString(),
+      text: `🚫 Se eliminó la asignación de ${assignee}`,
+      author: "Sistema",
+      createdAt: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+      isSystemComment: true,
+    };
+    setComments([...comments, unassignmentComment]);
+  };
+
+  // Manejar checklist
+  const handleAddChecklistItem = () => {
+    if (!newChecklistItem.trim()) return;
+    const newItem = {
+      id: Date.now().toString(),
+      text: newChecklistItem.trim(),
+      completed: false,
+      createdAt: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+    };
+    setChecklist([...checklist, newItem]);
+    setNewChecklistItem("");
+
+    // Agregar comentario automático
+    const checklistComment = {
+      id: Date.now().toString(),
+      text: `📋 Se agregó la subtarea: ${newChecklistItem.trim()}`,
+      author: "Sistema",
+      createdAt: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+      isSystemComment: true,
+    };
+    setComments([...comments, checklistComment]);
+  };
+
+  const handleToggleChecklistItem = (itemId) => {
+    setChecklist(
+      checklist.map((item) => {
+        if (item.id === itemId) {
+          const newStatus = !item.completed;
+          // Agregar comentario automático
+          const statusComment = {
+            id: Date.now().toString(),
+            text: `${newStatus ? "✅" : "🔄"} Subtarea "${
+              item.text
+            }" marcada como ${newStatus ? "completada" : "pendiente"}`,
+            author: "Sistema",
+            createdAt: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+            isSystemComment: true,
+          };
+          setComments([...comments, statusComment]);
+          return { ...item, completed: newStatus };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleDeleteChecklistItem = (itemId) => {
+    const item = checklist.find((i) => i.id === itemId);
+    setChecklist(checklist.filter((i) => i.id !== itemId));
+
+    // Agregar comentario automático
+    const deleteComment = {
+      id: Date.now().toString(),
+      text: `🗑️ Se eliminó la subtarea: ${item.text}`,
+      author: "Sistema",
+      createdAt: dayjs().format("YYYY-MM-DD HH:mm:ss"),
+      isSystemComment: true,
+    };
+    setComments([...comments, deleteComment]);
+  };
+
+  // Calcular progreso del checklist
+  const checklistProgress =
+    checklist.length > 0
+      ? Math.round(
+          (checklist.filter((item) => item.completed).length /
+            checklist.length) *
+            100
+        )
+      : 0;
 
   // Guardar cambios y sincronizar con la tarea
   const handleSave = () => {
@@ -43,6 +162,8 @@ const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
       files,
       isCompleted,
       comments,
+      assignees,
+      checklist,
     });
     onClose();
   };
@@ -63,7 +184,6 @@ const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
         : "🔄 Tarea reabierta para modificaciones",
       author: "Sistema",
       createdAt: dayjs().format("YYYY-MM-DD HH:mm:ss"),
-      avatar: "https://i.pravatar.cc/30?img=8", // Avatar diferente para el sistema
       isSystemComment: true,
     };
 
@@ -77,9 +197,8 @@ const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
     const comment = {
       id: Date.now().toString(),
       text: newComment.trim(),
-      author: "Usuario",
+      author: "Usuario Actual",
       createdAt: dayjs().format("YYYY-MM-DD HH:mm:ss"),
-      avatar: "https://i.pravatar.cc/30?img=1",
     };
 
     const updatedComments = [...comments, comment];
@@ -92,6 +211,40 @@ const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
       e.preventDefault();
       handleAddComment();
     }
+  };
+
+  // Función para calcular la prioridad basada en la fecha
+  const getPriorityInfo = () => {
+    if (!dueDate)
+      return { text: "Sin fecha", color: "bg-gray-200/60 text-gray-600" };
+
+    const today = dayjs();
+    const dueDateObj = dayjs(dueDate);
+    const diffDays = dueDateObj.diff(today, "day");
+
+    if (diffDays < 0)
+      return {
+        text: "Alta",
+        color: "bg-red-500/30 text-red-700",
+        icon: "🔥",
+      };
+    if (diffDays === 0)
+      return {
+        text: "Alta",
+        color: "bg-red-500/30 text-red-700",
+        icon: "⚡",
+      };
+    if (diffDays <= 3)
+      return {
+        text: "Media",
+        color: "bg-yellow-500/30 text-yellow-700",
+        icon: "⚠️",
+      };
+    return {
+      text: "Baja",
+      color: "bg-green-500/30 text-green-700",
+      icon: "✓",
+    };
   };
 
   return (
@@ -132,6 +285,30 @@ const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
             />
           </div>
 
+          {/* Prioridad */}
+          {(() => {
+            const priority = getPriorityInfo();
+            return (
+              <div className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                <div>
+                  <p className="text-sm font-medium text-gray-700 mb-1">
+                    Prioridad de la tarea
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`text-sm font-semibold px-2 py-0.5 rounded-md ${priority.color}`}
+                    >
+                      {priority.icon} {priority.text}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      (Basada en la fecha límite)
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {/* Descripción */}
           <div>
             <label className="block text-sm font-medium mb-1">
@@ -143,6 +320,100 @@ const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
               className="w-full p-2 border rounded-md h-24 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Añade una descripción..."
             />
+          </div>
+
+          {/* Checklist */}
+          <div className="border-t pt-4">
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium">
+                Subtareas ({checklist.filter((item) => item.completed).length}/
+                {checklist.length})
+              </label>
+              {checklist.length > 0 && (
+                <span className="text-sm text-gray-500">
+                  {Math.round(
+                    (checklist.filter((item) => item.completed).length /
+                      checklist.length) *
+                      100
+                  )}
+                  % completado
+                </span>
+              )}
+            </div>
+
+            {/* Barra de progreso */}
+            {checklist.length > 0 && (
+              <div className="flex items-center gap-2 mb-4">
+                <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 transition-all duration-300"
+                    style={{
+                      width: `${Math.round(
+                        (checklist.filter((item) => item.completed).length /
+                          checklist.length) *
+                          100
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Lista de subtareas */}
+            <div className="space-y-2 mb-3">
+              {checklist.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center gap-2 p-2 bg-gray-50 rounded-md group"
+                >
+                  <input
+                    type="checkbox"
+                    checked={item.completed}
+                    onChange={() => handleToggleChecklistItem(item.id)}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span
+                    className={`flex-1 text-sm ${
+                      item.completed
+                        ? "line-through text-gray-500"
+                        : "text-gray-700"
+                    }`}
+                  >
+                    {item.text}
+                  </span>
+                  <button
+                    onClick={() => handleDeleteChecklistItem(item.id)}
+                    className="opacity-0 group-hover:opacity-100 text-red-500 hover:text-red-700 transition-opacity"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Input para nueva subtarea */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newChecklistItem}
+                onChange={(e) => setNewChecklistItem(e.target.value)}
+                placeholder="Agregar nueva subtarea..."
+                className="flex-1 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddChecklistItem();
+                  }
+                }}
+              />
+              <button
+                onClick={handleAddChecklistItem}
+                disabled={!newChecklistItem.trim()}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Agregar
+              </button>
+            </div>
           </div>
 
           {/* Fecha Límite */}
@@ -220,6 +491,56 @@ const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
             </div>
           )}
 
+          {/* Asignación de Usuarios */}
+          <div className="border-t pt-4">
+            <label className="block text-sm font-medium mb-2">
+              Responsables de la tarea
+            </label>
+
+            {/* Lista de usuarios asignados */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {assignees.map((assignee) => (
+                <div
+                  key={assignee}
+                  className="flex items-center gap-2 bg-gray-100 px-3 py-1.5 rounded-full"
+                >
+                  <UserInitials name={assignee} size="small" />
+                  <span className="text-sm">{assignee}</span>
+                  <button
+                    onClick={() => handleRemoveAssignee(assignee)}
+                    className="text-gray-500 hover:text-red-500"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Input para agregar usuarios */}
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={newAssignee}
+                onChange={(e) => setNewAssignee(e.target.value)}
+                placeholder="Nombre del responsable..."
+                className="flex-1 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                onKeyPress={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddAssignee();
+                  }
+                }}
+              />
+              <button
+                onClick={handleAddAssignee}
+                disabled={!newAssignee.trim()}
+                className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Asignar
+              </button>
+            </div>
+          </div>
+
           {/* Botones de acción */}
           <div className="flex justify-center gap-4 border-t pt-4">
             <button
@@ -252,11 +573,9 @@ const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
                     key={comment.id}
                     className="flex gap-3 bg-gray-50 p-3 rounded-lg"
                   >
-                    <img
-                      src={comment.avatar}
-                      alt={comment.author}
-                      className="w-8 h-8 rounded-full"
-                    />
+                    <div className="flex-shrink-0">
+                      <UserInitials name={comment.author} size="medium" />
+                    </div>
                     <div className="flex-1">
                       <div className="flex justify-between items-start">
                         <h4 className="font-semibold text-sm">
@@ -277,11 +596,9 @@ const ViewModal = ({ isOpen, onClose, task, onSave, onComplete }) => {
 
             {/* Input para nuevo comentario */}
             <div className="flex gap-3">
-              <img
-                src="https://i.pravatar.cc/30?img=1"
-                alt="Usuario actual"
-                className="w-8 h-8 rounded-full"
-              />
+              <div className="flex-shrink-0">
+                <UserInitials name="Usuario Actual" size="medium" />
+              </div>
               <div className="flex-1">
                 <textarea
                   value={newComment}

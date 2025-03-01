@@ -128,8 +128,16 @@ const KanbanBoard = () => {
   const openColumnModal = () => setColumnModalOpen(true); // ✅ Abrir modal de columnas
   const closeColumnModal = () => setColumnModalOpen(false);
 
-  const addColumn = (title, initialTasks = []) => {
-    const newColumn = { id: Date.now().toString(), title };
+  const addColumn = (
+    title,
+    initialTasks = [],
+    userTypes = { tigo: true, externo: false }
+  ) => {
+    const newColumn = {
+      id: Date.now().toString(),
+      title,
+      userTypes,
+    };
     setColumns([...columns, newColumn]);
     setTasks((prevTasks) => ({
       ...prevTasks,
@@ -174,6 +182,12 @@ const KanbanBoard = () => {
       title: taskTitle,
       description: "",
       dueDate: dayjs().format("YYYY-MM-DD"),
+      comments: [],
+      checklist: [],
+      assignees: [],
+      files: [],
+      isCompleted: false,
+      columnId: columnId,
     };
 
     setTasks((prevTasks) => ({
@@ -269,9 +283,23 @@ const KanbanBoard = () => {
                     >
                       {/* Header con título, número y eliminar */}
                       <div className="flex justify-between items-center mb-2">
-                        <h2 className="text-lg font-semibold">
-                          {column.title}
-                        </h2>
+                        <div>
+                          <h2 className="text-lg font-semibold">
+                            {column.title}
+                          </h2>
+                          <div className="flex gap-1 mt-1">
+                            {column.userTypes?.tigo && (
+                              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
+                                Tigo
+                              </span>
+                            )}
+                            {column.userTypes?.externo && (
+                              <span className="text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded">
+                                Externo
+                              </span>
+                            )}
+                          </div>
+                        </div>
                         <div className="flex items-center gap-2">
                           <div
                             className="w-6 h-6 flex items-center justify-center rounded-full text-black text-sm font-bold"
@@ -337,7 +365,8 @@ const KanbanBoard = () => {
       <TaskModal
         isOpen={modalOpen}
         onClose={closeModal}
-        onSave={(taskTitle) => addTask(taskTitle, selectedColumn)}
+        onSave={(title) => addTask(title, selectedColumn)}
+        columnId={selectedColumn}
       />
       <ViewModal
         isOpen={viewModalOpen}

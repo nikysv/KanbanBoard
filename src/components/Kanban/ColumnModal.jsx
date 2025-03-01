@@ -5,10 +5,18 @@ const ColumnModal = ({ isOpen, onClose, onSave }) => {
 
   const [tasks, setTasks] = useState([""]);
   const [showTaskInputs, setShowTaskInputs] = useState(false);
+  const [userTypes, setUserTypes] = useState({
+    tigo: true,
+    externo: false,
+  });
 
   const handleSave = () => {
     const columnName = document.getElementById("columnName").value.trim();
     if (columnName === "") return;
+    if (!userTypes.tigo && !userTypes.externo) {
+      alert("Debes seleccionar al menos un tipo de usuario");
+      return;
+    }
 
     const columnTasks = showTaskInputs
       ? tasks
@@ -22,9 +30,17 @@ const ColumnModal = ({ isOpen, onClose, onSave }) => {
           }))
       : [];
 
-    onSave(columnName, columnTasks);
+    onSave(columnName, columnTasks, userTypes);
     setTasks([""]);
     setShowTaskInputs(false);
+    setUserTypes({ tigo: true, externo: false });
+  };
+
+  const handleUserTypeChange = (type) => {
+    setUserTypes((prev) => ({
+      ...prev,
+      [type]: !prev[type],
+    }));
   };
 
   const handleAddTask = () => {
@@ -40,6 +56,17 @@ const ColumnModal = ({ isOpen, onClose, onSave }) => {
   const handleRemoveTask = (index) => {
     const newTasks = tasks.filter((_, i) => i !== index);
     setTasks(newTasks.length ? newTasks : [""]); // Mantener al menos una tarea
+  };
+
+  const getUserTypesText = () => {
+    if (userTypes.tigo && userTypes.externo) {
+      return "Todos los usuarios podrán ver esta columna";
+    } else if (userTypes.tigo) {
+      return "Solo los trabajadores de Tigo podrán ver esta columna";
+    } else if (userTypes.externo) {
+      return "Solo los trabajadores externos podrán ver esta columna";
+    }
+    return "Debes seleccionar al menos un tipo de usuario";
   };
 
   return (
@@ -58,6 +85,42 @@ const ColumnModal = ({ isOpen, onClose, onSave }) => {
             placeholder="Escribe el nombre de la columna..."
             className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+        </div>
+
+        {/* Selección de tipo de usuario */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium mb-2">
+            ¿Quién podrá ver esta columna?
+          </label>
+          <div className="flex gap-4">
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={userTypes.tigo}
+                onChange={() => handleUserTypeChange("tigo")}
+                className="form-checkbox h-4 w-4 text-blue-500 rounded"
+              />
+              <span className="ml-2 text-sm">Tigo</span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={userTypes.externo}
+                onChange={() => handleUserTypeChange("externo")}
+                className="form-checkbox h-4 w-4 text-blue-500 rounded"
+              />
+              <span className="ml-2 text-sm">Externo</span>
+            </label>
+          </div>
+          <p
+            className={`mt-1 text-xs ${
+              !userTypes.tigo && !userTypes.externo
+                ? "text-red-500"
+                : "text-gray-500"
+            }`}
+          >
+            {getUserTypesText()}
+          </p>
         </div>
 
         {/* Toggle para mostrar/ocultar tareas */}
