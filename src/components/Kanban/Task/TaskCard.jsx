@@ -28,8 +28,8 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
     const diffDays = dueDate.diff(today, "day");
     const overdueDays = today.diff(dueDate, "day");
 
-    if (diffDays >= 5) return "bg-green-300 text-green-800";
-    if (diffDays >= 3) return "bg-orange-300 text-orange-800";
+    if (diffDays >= 4) return "bg-green-300 text-green-800";
+    if (diffDays >= 2) return "bg-orange-300 text-orange-800";
     if (diffDays >= 0) return "bg-red-400 text-white";
     if (overdueDays <= 2) return "bg-red-500 text-white";
     return "bg-gray-300 text-gray-800";

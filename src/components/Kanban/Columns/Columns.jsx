@@ -292,11 +292,19 @@ const KanbanBoard = ({ userType = "tigo", filters }) => {
     closeColumnModal();
   };
 
-  const filterTasks = (task) => {
-    if (!filters || filters.priority === "all") return true;
+  const filterTask = (task) => {
+    // Filtrar por prioridad si no es "all"
+    if (filters.priority !== "all") {
+      const priority = getPriorityLevel(task.dueDate);
+      if (priority !== filters.priority) return false;
+    }
 
-    const taskPriority = getPriorityLevel(task.dueDate);
-    return taskPriority === filters.priority;
+    // Filtrar por fecha si no es "all"
+    if (filters.date !== "all") {
+      return dayjs(task.dueDate).format("YYYY-MM-DD") === filters.date;
+    }
+
+    return true;
   };
 
   return (
@@ -372,7 +380,7 @@ const KanbanBoard = ({ userType = "tigo", filters }) => {
 
                       {/* Lista de tareas con filtro aplicado */}
                       <div className="flex-1 overflow-y-auto scrollbar-hide">
-                        {tasks[column.id]?.filter(filterTasks).map((task) => (
+                        {tasks[column.id]?.filter(filterTask).map((task) => (
                           <TaskCard
                             key={task.id}
                             task={{ ...task, columnId: column.id }}
