@@ -1,9 +1,9 @@
 import React from "react";
-import KanbanBoard from "./components/Kanban/Columns/Columns";
+import MainDashboard from "./components/Kanban/principal/Principal";
 
 function App() {
   return (
-    <KanbanBoard/>
+    <MainDashboard/>
   );
 }
 
