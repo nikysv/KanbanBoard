@@ -52,7 +52,21 @@ const DeleteColumnModal = ({
   );
 };
 
-const KanbanBoard = ({ userType = "tigo" }) => {
+// Agregar la función getPriorityLevel directamente en el componente
+const getPriorityLevel = (dueDate) => {
+  if (!dueDate) return "low";
+
+  const today = dayjs();
+  const taskDate = dayjs(dueDate);
+  const diffDays = taskDate.diff(today, "day");
+
+  if (diffDays < 0) return "high"; // Vencida
+  if (diffDays === 0) return "high"; // Vence hoy
+  if (diffDays <= 3) return "medium"; // Próxima a vencer
+  return "low"; // Tiene tiempo
+};
+
+const KanbanBoard = ({ userType = "tigo", filters }) => {
   const [columns, setColumns] = useState([
     { id: "1", title: "Pendiente", userTypes: { tigo: true, externo: false } },
     { id: "2", title: "En Proceso", userTypes: { tigo: true, externo: false } },
@@ -278,6 +292,13 @@ const KanbanBoard = ({ userType = "tigo" }) => {
     closeColumnModal();
   };
 
+  const filterTasks = (task) => {
+    if (!filters || filters.priority === "all") return true;
+
+    const taskPriority = getPriorityLevel(task.dueDate);
+    return taskPriority === filters.priority;
+  };
+
   return (
     <div className="container mx-auto p-5">
       <button
@@ -349,9 +370,9 @@ const KanbanBoard = ({ userType = "tigo" }) => {
                         style={{ borderColor: generateColor(index, 60) }}
                       />
 
-                      {/* Lista de tareas */}
+                      {/* Lista de tareas con filtro aplicado */}
                       <div className="flex-1 overflow-y-auto scrollbar-hide">
-                        {tasks[column.id]?.map((task) => (
+                        {tasks[column.id]?.filter(filterTasks).map((task) => (
                           <TaskCard
                             key={task.id}
                             task={{ ...task, columnId: column.id }}

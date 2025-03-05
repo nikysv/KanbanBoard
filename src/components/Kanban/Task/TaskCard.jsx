@@ -3,43 +3,14 @@ import relativeTime from "dayjs/plugin/relativeTime"; // Para calcular tiempos r
 import "dayjs/locale/es"; // Español
 import TrashIcon from "../../icons/trash";
 import { useCallback, useState } from "react";
-import FileModal from "../Modals/FileModal";
 import UserInitials from "./UserInitials";
-import TaskComments from "./TaskCommentss";
 import FilePreviewModal from "../Files/FilePreviewModal";
+import TaskPriority from "./TaskPriority";
+import DeleteConfirmationModal from "../Modals/DeleteConfirmationModal";
+import TaskComments from "./TaskCommentss";
 
 dayjs.extend(relativeTime);
 dayjs.locale("es");
-
-const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, taskTitle }) => {
-  if (!isOpen) return null;
-
-  return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-      <div className="bg-white p-6 rounded-lg shadow-lg w-96">
-        <h3 className="text-lg font-semibold mb-4">Confirmar eliminación</h3>
-        <p className="text-gray-600 mb-6">
-          ¿Estás seguro de que deseas eliminar la tarea "{taskTitle}"? Esta
-          acción no se puede deshacer.
-        </p>
-        <div className="flex justify-end gap-2">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-300 rounded-md hover:bg-gray-400"
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-          >
-            Eliminar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -47,51 +18,9 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [newComment, setNewComment] = useState("");
 
-  // Función para calcular la prioridad basada en la fecha
-  const getPriorityInfo = () => {
-    if (task.isCompleted) {
-      return {
-        text: "Completada",
-        color: "bg-green-700/20 text-green-800",
-        icon: "✓",
-      };
-    }
-
-    if (!task.dueDate)
-      return { text: "Sin fecha", color: "bg-gray-200/60 text-gray-600" };
-
-    const today = dayjs();
-    const dueDate = dayjs(task.dueDate);
-    const diffDays = dueDate.diff(today, "day");
-
-    if (diffDays < 0)
-      return {
-        text: "Alta",
-        color: "bg-red-500/30 text-red-700",
-        icon: "🔥",
-      };
-    if (diffDays === 0)
-      return {
-        text: "Alta",
-        color: "bg-red-500/30 text-red-700",
-        icon: "⚡",
-      };
-    if (diffDays <= 3)
-      return {
-        text: "Media",
-        color: "bg-yellow-500/30 text-yellow-700",
-        icon: "⚠️",
-      };
-    return {
-      text: "Baja",
-      color: "bg-green-500/30 text-green-700",
-      icon: "✓",
-    };
-  };
-
-  // Función para calcular el color de la fecha
+  // ✅ Función para calcular el color de la fecha
   const getDateBadgeColor = () => {
-    if (task.isCompleted) return "bg-green-200 text-green-800";
+    if (task.isCompleted) return "bg-green-600 text-slate-200";
     if (!task.dueDate) return "bg-gray-300";
 
     const today = dayjs();
@@ -109,13 +38,8 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
   const isOverdue =
     !task.isCompleted && dayjs(task.dueDate).isBefore(dayjs(), "day");
   const overdueDays = dayjs().diff(dayjs(task.dueDate), "day");
-  const priority = getPriorityInfo();
 
-  const handleDeleteClick = useCallback((e) => {
-    e.stopPropagation();
-    setShowDeleteModal(true);
-  }, []);
-
+  // ✅ Restauramos las funciones originales
   const handleConfirmDelete = useCallback(
     (e) => {
       if (e) e.stopPropagation();
@@ -165,70 +89,45 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
         }`}
         onClick={() => onView(task)}
       >
-        {/* Fecha con advertencia de retraso */}
-        <div className="flex items-center flex-wrap gap-1">
-          <div
-            className={`text-xs font-semibold px-2 py-1 rounded-md ${getDateBadgeColor()}`}
-          >
-            {task.dueDate
-              ? dayjs(task.dueDate).format("DD MMM").toUpperCase()
-              : "SIN FECHA"}
+        {/* ✅ Fecha con advertencia de retraso */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1">
+            <div
+              className={`text-xs font-semibold px-2 py-1 rounded-md ${getDateBadgeColor()}`}
+            >
+              {task.dueDate
+                ? dayjs(task.dueDate).format("DD MMM").toUpperCase()
+                : "SIN FECHA"}
+            </div>
+            {isOverdue && !task.isCompleted && (
+              <span className="text-red-500 text-xs font-bold whitespace-nowrap">
+                ⚠ {overdueDays > 2 ? "Vencida" : "Con retraso!"}
+              </span>
+            )}
+            {task.isCompleted && (
+              <span className="text-green-800 text-xs font-bold whitespace-nowrap">
+                ✔ Completada
+              </span>
+            )}
           </div>
-          {isOverdue && !task.isCompleted && (
-            <span className="text-red-500 text-xs font-bold whitespace-nowrap">
-              ⚠ {overdueDays > 2 ? "Vencida" : "Con retraso!"}
-            </span>
-          )}
-          {task.isCompleted && (
-            <span className="text-green-800 text-xs font-bold whitespace-nowrap">
-              ✔ Completada
-            </span>
-          )}
         </div>
 
-        {/* Título de la tarea */}
+        {/* ✅ Título de la tarea */}
         <h3
-          className={`text-sm font-semibold break-words line-clamp-1 ${
+          className={`text-sm font-semibold break-words ${
             task.isCompleted ? "text-green-800 line-through" : "text-gray-900"
           }`}
         >
           {task.title}
         </h3>
 
-        {/* Etiqueta de prioridad */}
-        <div className="flex items-center gap-1">
-          <span
-            className={`text-xs font-semibold px-2 py-0.5 rounded-md ${priority.color}`}
-          >
-            {priority.icon} Prioridad {priority.text}
-          </span>
+        {/* ✅ MOVEMOS LA PRIORIDAD DEBAJO DEL TÍTULO Y AJUSTAMOS SU ANCHO */}
+        <div className="flex justify-start mt-1">
+          <TaskPriority dueDate={task.dueDate} isCompleted={task.isCompleted} />
         </div>
 
-        {/* Progreso del checklist */}
-        {task.checklist && task.checklist.length > 0 && (
-          <div className="flex items-center gap-2 mt-1">
-            <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-500 transition-all duration-300"
-                style={{
-                  width: `${Math.round(
-                    (task.checklist.filter((item) => item.completed).length /
-                      task.checklist.length) *
-                      100
-                  )}%`,
-                }}
-              />
-            </div>
-            <span className="text-xs text-gray-500">
-              {task.checklist.filter((item) => item.completed).length}/
-              {task.checklist.length}
-            </span>
-          </div>
-        )}
-
-        {/* Íconos de usuarios, comentarios y adjuntos */}
+        {/* ✅ Acciones */}
         <div className="flex items-center justify-between mt-1">
-          {/* Avatares de responsables */}
           <div className="flex -space-x-1.5 overflow-hidden">
             {task.assignees && task.assignees.length > 0 ? (
               <>
@@ -253,8 +152,9 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
             )}
           </div>
 
-          {/* Acciones */}
+          {/* Botones */}
           <div className="flex items-center gap-2 ml-2">
+            {/* ✅ Restauramos el contador de comentarios */}
             <button
               className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 relative"
               onClick={handleCommentsClick}
@@ -271,15 +171,19 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
               onClick={handleFilesClick}
             >
               📂
-              {task.files?.length > 0 && (
+              {task.files && task.files.length > 0 && (
                 <span className="absolute -top-1 -right-1 bg-blue-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
                   {task.files.length}
                 </span>
               )}
             </button>
+
             <button
               className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-gray-100"
-              onClick={handleDeleteClick}
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDeleteModal(true); // ✅ Muestra el modal en lugar de eliminar directamente
+              }}
             >
               <TrashIcon size={16} />
             </button>
@@ -287,6 +191,7 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
         </div>
       </div>
 
+      {/* ✅ Modales */}
       <DeleteConfirmationModal
         isOpen={showDeleteModal}
         onClose={handleCancelDelete}
@@ -300,7 +205,7 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
         files={task.files || []}
       />
 
-      {/* Modal de comentarios */}
+      {/* ✅ Modal de comentarios restaurado */}
       {showCommentModal && (
         <div
           className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
@@ -336,7 +241,7 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
             <div className="p-4">
               <TaskComments
                 comments={task.comments || []}
-                onAddComment={handleAddComment}
+                onAddComment={handleAddComment} // ✅ Ahora los comentarios se sincronizan correctamente
                 newComment={newComment}
                 setNewComment={setNewComment}
               />

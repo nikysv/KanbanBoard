@@ -85,7 +85,7 @@ const ViewModal = ({
 
   return (
     <>
-      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
+      <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
         <div className="bg-white rounded-lg shadow-lg w-[600px] max-h-[90vh] overflow-y-auto relative">
           {/* Header con título y botón de cerrar */}
           <div className="sticky top-0 bg-white px-6 py-4 border-b flex justify-between items-center">
@@ -139,13 +139,20 @@ const ViewModal = ({
               />
             </div>
 
-            {/* Fecha y Prioridad */}
-            <div className="mb-4">
-              <TaskPriority
-                dueDate={dueDate}
-                setDueDate={setDueDate}
-                isCompleted={isCompleted}
+            {/* Fecha y Prioridad en la misma fila */}
+            <div className="mb-4 flex items-center gap-3">
+              <input
+                type="date"
+                value={dueDate || ""}
+                onChange={(e) => !isCompleted && setDueDate(e.target.value)}
+                disabled={isCompleted}
+                className={`p-2 border rounded-md text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  isCompleted
+                    ? "bg-green-50 text-green-800 cursor-not-allowed"
+                    : ""
+                }`}
               />
+              <TaskPriority dueDate={dueDate} isCompleted={isCompleted} />
             </div>
 
             {/* Descripción */}
