@@ -1,10 +1,12 @@
 import dayjs from "dayjs"; // Manejo de fechas en JS
 import relativeTime from "dayjs/plugin/relativeTime"; // Para calcular tiempos relativos
 import "dayjs/locale/es"; // Español
-import TrashIcon from "../icons/trash";
+import TrashIcon from "../../icons/trash";
 import { useCallback, useState } from "react";
-import FileModal from "./FileModal";
+import FileModal from "../Modals/FileModal";
 import UserInitials from "./UserInitials";
+import TaskComments from "./TaskCommentss";
+import FilePreviewModal from "../Files/FilePreviewModal";
 
 dayjs.extend(relativeTime);
 dayjs.locale("es");
@@ -41,10 +43,20 @@ const DeleteConfirmationModal = ({ isOpen, onClose, onConfirm, taskTitle }) => {
 
 const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showFileModal, setShowFileModal] = useState(false);
+  const [showFilePreviewModal, setShowFilePreviewModal] = useState(false);
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [newComment, setNewComment] = useState("");
 
   // Función para calcular la prioridad basada en la fecha
   const getPriorityInfo = () => {
+    if (task.isCompleted) {
+      return {
+        text: "Completada",
+        color: "bg-green-700/20 text-green-800",
+        icon: "✓",
+      };
+    }
+
     if (!task.dueDate)
       return { text: "Sin fecha", color: "bg-gray-200/60 text-gray-600" };
 
@@ -94,7 +106,8 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
     return "bg-gray-300 text-gray-800";
   };
 
-  const isOverdue = dayjs(task.dueDate).isBefore(dayjs(), "day");
+  const isOverdue =
+    !task.isCompleted && dayjs(task.dueDate).isBefore(dayjs(), "day");
   const overdueDays = dayjs().diff(dayjs(task.dueDate), "day");
   const priority = getPriorityInfo();
 
@@ -117,18 +130,32 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
     setShowDeleteModal(false);
   }, []);
 
-  const handleCommentsClick = useCallback(
-    (e) => {
-      e.stopPropagation();
-      onOpenComments(task);
-    },
-    [onOpenComments, task]
-  );
+  const handleCommentsClick = useCallback((e) => {
+    e.stopPropagation();
+    setShowCommentModal(true);
+  }, []);
 
   const handleFilesClick = useCallback((e) => {
     e.stopPropagation();
-    setShowFileModal(true);
+    setShowFilePreviewModal(true);
   }, []);
+
+  const handleAddComment = (commentText) => {
+    const updatedTask = {
+      ...task,
+      comments: [
+        ...(task.comments || []),
+        {
+          id: Date.now().toString(),
+          text: commentText,
+          author: "Usuario",
+          timestamp: new Date().toISOString(),
+        },
+      ],
+    };
+    onOpenComments(updatedTask);
+    setShowCommentModal(false);
+  };
 
   return (
     <>
@@ -267,11 +294,56 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
         taskTitle={task.title}
       />
 
-      <FileModal
-        isOpen={showFileModal}
-        onClose={() => setShowFileModal(false)}
-        task={task}
+      <FilePreviewModal
+        isOpen={showFilePreviewModal}
+        onClose={() => setShowFilePreviewModal(false)}
+        files={task.files || []}
       />
+
+      {/* Modal de comentarios */}
+      {showCommentModal && (
+        <div
+          className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowCommentModal(false);
+          }}
+        >
+          <div
+            className="bg-white rounded-lg shadow-lg w-[400px] max-h-[80vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white px-4 py-3 border-b flex justify-between items-center">
+              <h3 className="font-semibold">Comentarios</h3>
+              <button
+                onClick={() => setShowCommentModal(false)}
+                className="p-1 hover:bg-gray-100 rounded-full"
+              >
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4">
+              <TaskComments
+                comments={task.comments || []}
+                onAddComment={handleAddComment}
+                newComment={newComment}
+                setNewComment={setNewComment}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };

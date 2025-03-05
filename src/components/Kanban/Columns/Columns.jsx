@@ -1,12 +1,11 @@
 import { useState } from "react";
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"; // ✅ Drag & Drop funcional
-import AddIcon from "../icons/add";
-import TrashIcon from "../icons/trash";
-import ViewModal from "./ViewModal";
-import TaskModal from "./TaskModal";
-import TaskCard from "./TaskCard";
-import ColumnModal from "./ColumnModal";
-import ModalComments from "./ModalComments";
+import AddIcon from "../../icons/add";
+import TrashIcon from "../../icons/trash";
+import ViewModal from "../Modals/ViewModal";
+import TaskModal from "../Modals/TaskModal";
+import TaskCard from "../Task/TaskCard";
+import ColumnModal from "../Modals/ColumnModal";
 import dayjs from "dayjs";
 
 const DeleteColumnModal = ({
@@ -53,11 +52,11 @@ const DeleteColumnModal = ({
   );
 };
 
-const KanbanBoard = () => {
+const KanbanBoard = ({ userType = "tigo" }) => {
   const [columns, setColumns] = useState([
-    { id: "1", title: "Pendiente" },
-    { id: "2", title: "En Proceso" },
-    { id: "3", title: "Finalizado" },
+    { id: "1", title: "Pendiente", userTypes: { tigo: true, externo: false } },
+    { id: "2", title: "En Proceso", userTypes: { tigo: true, externo: false } },
+    { id: "3", title: "Finalizado", userTypes: { tigo: true, externo: false } },
   ]);
 
   const [tasks, setTasks] = useState({
@@ -95,10 +94,10 @@ const KanbanBoard = () => {
   const [viewModalOpen, setViewModalOpen] = useState(false);
   const [columnModalOpen, setColumnModalOpen] = useState(false);
   const [deleteColumnModalOpen, setDeleteColumnModalOpen] = useState(false);
-  const [commentsModalOpen, setCommentsModalOpen] = useState(false);
   const [selectedColumn, setSelectedColumn] = useState(null);
   const [selectedTask, setSelectedTask] = useState(null);
   const [columnToDelete, setColumnToDelete] = useState(null);
+  const [editingColumn, setEditingColumn] = useState(null);
 
   const generateColor = (index, lightness = 80) => {
     const hue = (index * 137) % 360; // Espaciado uniforme en la rueda de colores
@@ -233,16 +232,6 @@ const KanbanBoard = () => {
     }));
   };
 
-  const handleOpenComments = (task) => {
-    setSelectedTask(task);
-    setCommentsModalOpen(true);
-  };
-
-  const handleCloseComments = () => {
-    setSelectedTask(null);
-    setCommentsModalOpen(false);
-  };
-
   const handleSaveComments = (updatedTask) => {
     setTasks((prevTasks) => ({
       ...prevTasks,
@@ -250,6 +239,43 @@ const KanbanBoard = () => {
         task.id === updatedTask.id ? updatedTask : task
       ),
     }));
+  };
+
+  const handleOpenComments = (updatedTask) => {
+    handleSaveComments(updatedTask);
+    if (viewModalOpen && selectedTask?.id === updatedTask.id) {
+      setSelectedTask(updatedTask);
+    }
+  };
+
+  // Función para abrir el modal de edición de columna
+  const handleEditColumn = (column, e) => {
+    e.stopPropagation();
+    setEditingColumn(column);
+    setColumnModalOpen(true);
+  };
+
+  // Función para guardar los cambios de la columna
+  const handleSaveColumn = (title, initialTasks, userTypes) => {
+    if (editingColumn) {
+      // Editar columna existente
+      setColumns(
+        columns.map((col) =>
+          col.id === editingColumn.id
+            ? {
+                ...col,
+                title,
+                userTypes: userType === "tigo" ? userTypes : col.userTypes,
+              }
+            : col
+        )
+      );
+      setEditingColumn(null);
+    } else {
+      // Crear nueva columna
+      addColumn(title, initialTasks, { tigo: true, externo: false });
+    }
+    closeColumnModal();
   };
 
   return (
@@ -287,18 +313,6 @@ const KanbanBoard = () => {
                           <h2 className="text-lg font-semibold">
                             {column.title}
                           </h2>
-                          <div className="flex gap-1 mt-1">
-                            {column.userTypes?.tigo && (
-                              <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-800 rounded">
-                                Tigo
-                              </span>
-                            )}
-                            {column.userTypes?.externo && (
-                              <span className="text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded">
-                                Externo
-                              </span>
-                            )}
-                          </div>
                         </div>
                         <div className="flex items-center gap-2">
                           <div
@@ -309,6 +323,15 @@ const KanbanBoard = () => {
                           >
                             {tasks[column.id]?.length || 0}
                           </div>
+                          {userType === "tigo" && (
+                            <button
+                              onClick={(e) => handleEditColumn(column, e)}
+                              className="p-1.5 hover:bg-gray-200 rounded-md"
+                              title="Editar columna"
+                            >
+                              ✏️
+                            </button>
+                          )}
                           <button
                             className="p-1.5 hover:bg-gray-200 rounded-md"
                             onClick={(e) =>
@@ -320,13 +343,14 @@ const KanbanBoard = () => {
                         </div>
                       </div>
 
+                      {/* Línea separadora con color */}
                       <hr
                         className="w-full mb-4 border-t-2"
                         style={{ borderColor: generateColor(index, 60) }}
                       />
 
-                      {/* Contenedor de tareas con scroll */}
-                      <div className="flex-1 overflow-y-auto space-y-2 pr-2 scrollbar-hide">
+                      {/* Lista de tareas */}
+                      <div className="flex-1 overflow-y-auto scrollbar-hide">
                         {tasks[column.id]?.map((task) => (
                           <TaskCard
                             key={task.id}
@@ -338,16 +362,14 @@ const KanbanBoard = () => {
                         ))}
                       </div>
 
-                      {/* ✅ Botón para agregar tareas */}
-                      <div className="mt-3">
-                        <button
-                          onClick={() => openModal(column.id)}
-                          className="flex items-center justify-center gap-2 bg-slate-100 rounded-lg border border-gray-400 px-6 py-2 w-full text-black font-semibold hover:bg-gray-200"
-                        >
-                          <AddIcon size={24} color="black" />
-                          Añadir nueva tarea
-                        </button>
-                      </div>
+                      {/* Botón para agregar tareas */}
+                      <button
+                        onClick={() => openModal(column.id)}
+                        className="mt-2 w-full py-2 bg-white border border-gray-300 rounded-md hover:bg-gray-50 flex items-center justify-center gap-2"
+                      >
+                        <AddIcon size={20} />
+                        <span>Agregar tarea</span>
+                      </button>
                     </div>
                   )}
                 </Draggable>
@@ -357,16 +379,12 @@ const KanbanBoard = () => {
           )}
         </Droppable>
       </DragDropContext>
-      <ColumnModal
-        isOpen={columnModalOpen}
-        onClose={closeColumnModal}
-        onSave={addColumn}
-      />
+
+      {/* Modales */}
       <TaskModal
         isOpen={modalOpen}
         onClose={closeModal}
         onSave={(title) => addTask(title, selectedColumn)}
-        columnId={selectedColumn}
       />
       <ViewModal
         isOpen={viewModalOpen}
@@ -374,6 +392,17 @@ const KanbanBoard = () => {
         task={selectedTask}
         onSave={updateTask}
         onComplete={completeTask}
+        onOpenComments={handleOpenComments}
+      />
+      <ColumnModal
+        isOpen={columnModalOpen}
+        onClose={() => {
+          closeColumnModal();
+          setEditingColumn(null);
+        }}
+        onSave={handleSaveColumn}
+        column={editingColumn}
+        isTigoUser={userType === "tigo"}
       />
       <DeleteColumnModal
         isOpen={deleteColumnModalOpen}
@@ -381,12 +410,6 @@ const KanbanBoard = () => {
         onConfirm={handleConfirmDeleteColumn}
         columnTitle={columnToDelete?.title}
         tasksCount={columnToDelete ? tasks[columnToDelete.id]?.length || 0 : 0}
-      />
-      <ModalComments
-        isOpen={commentsModalOpen}
-        onClose={handleCloseComments}
-        task={selectedTask}
-        onSave={handleSaveComments}
       />
     </div>
   );
