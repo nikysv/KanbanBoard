@@ -45,7 +45,17 @@ const ReportView = () => {
 
   return (
     <div className="p-10">
-      <h1 className="text-3xl font-bold mb-4">📊 Reporte de Tableros</h1>
+      {/* Header con título y botón de volver */}
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-3xl font-bold">📊 Reporte de Tableros</h1>
+        <button
+          onClick={handleReturn}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+        >
+          Volver al Tablero
+        </button>
+      </div>
+
       <p className="text-gray-600 mb-6">
         <strong>Sitio:</strong> {siteData.sitio} | <strong>ID:</strong>{" "}
         {siteData.id}
@@ -109,13 +119,6 @@ const ReportView = () => {
           )}
         </div>
       ))}
-
-      <button
-        onClick={handleReturn}
-        className="mt-6 px-4 py-2 bg-blue-500 text-white rounded-lg"
-      >
-        Volver al Tablero
-      </button>
     </div>
   );
 };
