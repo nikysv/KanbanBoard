@@ -1,18 +1,11 @@
-import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import MainDashboard from "./components/Kanban/principal/Principal";
-import Reporte from "./components/Reports/ReportView";
-
-
+import { BrowserRouter } from "react-router-dom";
+import AppRoutes from "./routes/Routes";
 
 function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<MainDashboard />} />
-        <Route path="/reporte" element={<Reporte />} /> {/* ✅ Nueva ruta */}
-      </Routes>
-    </Router>
+    <BrowserRouter>
+      <AppRoutes />
+    </BrowserRouter>
   );
 }
 

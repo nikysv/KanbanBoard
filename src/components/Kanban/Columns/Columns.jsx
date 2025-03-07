@@ -66,43 +66,32 @@ const getPriorityLevel = (dueDate) => {
   return "low"; // Tiene tiempo
 };
 
-const KanbanBoard = ({ userType = "tigo", filters }) => {
-  const [columns, setColumns] = useState([
-    { id: "1", title: "Pendiente", userTypes: { tigo: true, externo: false } },
-    { id: "2", title: "En Proceso", userTypes: { tigo: true, externo: false } },
-    { id: "3", title: "Finalizado", userTypes: { tigo: true, externo: false } },
-  ]);
+const KanbanBoard = ({ data, filters, userType = "tigo" }) => {
+  // Inicializar el estado usando los datos recibidos
+  const [columns, setColumns] = useState(
+    data.columnas.map((col) => ({
+      id: col.id,
+      title: col.titulo || col.title,
+      userTypes: { tigo: true, externo: false },
+    }))
+  );
 
-  const [tasks, setTasks] = useState({
-    1: [
-      {
-        id: "101",
-        title: "Revisar documentos",
-        description: "Revisar y firmar los documentos legales",
-        dueDate: dayjs().add(5, "day").format("YYYY-MM-DD"),
-        comments: [],
-      },
-    ],
-    2: [
-      {
-        id: "201",
-        title: "Desarrollar API",
-        description: "Implementar endpoints de usuario",
-        dueDate: dayjs().add(7, "day").format("YYYY-MM-DD"),
-        isCompleted: true,
-        comments: [],
-      },
-    ],
-    3: [
-      {
-        id: "301",
-        title: "Publicar reporte final",
-        description: "Subir el informe de desempeño",
-        dueDate: dayjs().subtract(1, "day").format("YYYY-MM-DD"),
-        comments: [],
-      },
-    ],
-  });
+  const [tasks, setTasks] = useState(
+    data.columnas.reduce((acc, col) => {
+      acc[col.id] = (col.tasks || col.tareas || []).map((task) => ({
+        id: task.id || Date.now().toString(),
+        title: task.titulo || task.title,
+        description: task.description || "",
+        dueDate: task.fecha || task.dueDate,
+        comments: task.comentarios || task.comments || [],
+        assignees: task.participantes || task.assignees || [],
+        files: task.archivos || task.files || [],
+        isCompleted: task.estado === "Completada" || task.isCompleted || false,
+        checklist: task.checklist || [],
+      }));
+      return acc;
+    }, {})
+  );
 
   const [modalOpen, setModalOpen] = useState(false);
   const [viewModalOpen, setViewModalOpen] = useState(false);

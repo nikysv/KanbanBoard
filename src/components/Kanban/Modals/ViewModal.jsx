@@ -63,8 +63,8 @@ const ViewModal = ({
   };
 
   const handleFileClick = (file) => {
-    setSelectedFile(file);
-    setShowPreviewModal(true);
+    // Aquí agregaríamos la lógica para previsualizar el archivo
+    window.open(file.url, "_blank");
   };
 
   const handleAddComment = (commentText) => {
@@ -81,6 +81,38 @@ const ViewModal = ({
       ],
     };
     onOpenComments(updatedTask);
+  };
+
+  const getFileIcon = (file) => {
+    if (!file || !file.name) return "📎";
+
+    const extension = file.name.split(".").pop().toLowerCase();
+    switch (extension) {
+      case "pdf":
+        return "📄";
+      case "doc":
+      case "docx":
+        return "📝";
+      case "xls":
+      case "xlsx":
+        return "📊";
+      case "ppt":
+      case "pptx":
+        return "📽️";
+      default:
+        return "📎";
+    }
+  };
+
+  const handlePreviewFile = (file) => {
+    setSelectedFile(file);
+    setShowPreviewModal(true);
+  };
+
+  const handleDownloadFile = (e, file) => {
+    e.stopPropagation();
+    // En un ambiente real, aquí iría la lógica de descarga
+    console.log("Descargando:", file);
   };
 
   return (
@@ -181,6 +213,51 @@ const ViewModal = ({
             </div>
 
             {/* Archivos */}
+            <div className="mt-4 border-t pt-4">
+              <h4 className="font-medium mb-2">Archivos adjuntos:</h4>
+              <div className="space-y-2">
+                {task.archivos &&
+                  task.archivos.map((archivo, idx) => (
+                    <div
+                      key={`file-${idx}-${archivo}`}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                    >
+                      <div
+                        className="flex items-center gap-2 cursor-pointer"
+                        onClick={() => handlePreviewFile(archivo)}
+                      >
+                        <span className="text-2xl">
+                          {archivo.endsWith(".pdf")
+                            ? "📄"
+                            : archivo.endsWith(".docx")
+                            ? "📝"
+                            : archivo.endsWith(".xlsx")
+                            ? "📊"
+                            : "📎"}
+                        </span>
+                        <span className="font-medium">{archivo}</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => handleDownloadFile(e, archivo)}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="Descargar archivo"
+                        >
+                          ⬇️
+                        </button>
+                        <button
+                          onClick={() => handlePreviewFile(archivo)}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="Ver archivo"
+                        >
+                          👁️
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
             <div className="mb-4 border-t pt-4">
               <div className="flex justify-between items-center mb-2">
                 <label className="text-sm font-medium">Archivos adjuntos</label>
@@ -198,59 +275,32 @@ const ViewModal = ({
               </div>
               <div className="bg-gray-50 p-3 rounded-lg">
                 <div className="flex flex-col gap-2">
-                  {localFiles.map((file) => (
-                    <div
-                      key={file.id}
-                      className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors"
-                    >
+                  {localFiles && localFiles.length > 0 ? (
+                    localFiles.map((file) => (
                       <div
-                        className="flex items-center gap-3 cursor-pointer flex-1 min-w-0"
-                        onClick={() => handleFileClick(file)}
+                        key={file.id}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors"
                       >
-                        <span className="text-2xl flex-shrink-0">
-                          {file.name.endsWith(".pdf")
-                            ? "📄"
-                            : file.name.match(/\.(doc|docx)$/)
-                            ? "📝"
-                            : file.name.match(/\.(xls|xlsx)$/)
-                            ? "📊"
-                            : file.name.match(/\.(ppt|pptx)$/)
-                            ? "📽️"
-                            : "📎"}
-                        </span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-gray-900 truncate max-w-[300px]">
-                            {file.name}
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {(file.size / 1024).toFixed(2)} KB
-                          </p>
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{getFileIcon(file)}</span>
+                          <div>
+                            <p className="text-sm font-medium">{file.name}</p>
+                            <p className="text-xs text-gray-500">
+                              Subido por {file.uploadedBy || "Usuario"} el{" "}
+                              {new Date(file.uploadDate).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
                         <button
                           onClick={() => handleRemoveFile(file.id)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors"
+                          className="p-2 text-gray-400 hover:text-red-500"
                           title="Eliminar archivo"
                         >
-                          <svg
-                            className="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                            />
-                          </svg>
+                          ✕
                         </button>
                       </div>
-                    </div>
-                  ))}
-                  {localFiles.length === 0 && (
+                    ))
+                  ) : (
                     <div className="text-center py-4 text-gray-500">
                       No hay archivos adjuntos
                     </div>
@@ -314,7 +364,7 @@ const ViewModal = ({
       <FilePreviewModal
         isOpen={showPreviewModal}
         onClose={() => setShowPreviewModal(false)}
-        files={localFiles}
+        files={task.archivos || []}
         initialSelectedFile={selectedFile}
       />
     </>
