@@ -12,7 +12,7 @@ import TaskComments from "./TaskCommentss";
 dayjs.extend(relativeTime);
 dayjs.locale("es");
 
-const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
+const TaskCard = ({ task, onView, onDelete, onOpenComments, canComplete }) => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showFilePreviewModal, setShowFilePreviewModal] = useState(false);
   const [showCommentModal, setShowCommentModal] = useState(false);
@@ -87,7 +87,7 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
         className={`bg-white p-2 rounded-lg shadow-md border border-gray-200 flex flex-col gap-1.5 cursor-pointer hover:bg-gray-100 w-full ${
           task.isCompleted ? "bg-green-100 border-green-300" : ""
         }`}
-        onClick={() => onView(task)}
+        onClick={() => onView({ ...task, canComplete })} // Pasar canComplete al modal
       >
         {/* ✅ Fecha con advertencia de retraso */}
         <div className="flex items-center justify-between">
@@ -154,7 +154,7 @@ const TaskCard = ({ task, onView, onDelete, onOpenComments }) => {
 
           {/* Botones */}
           <div className="flex items-center gap-2 ml-2">
-            {/* ✅ Restauramos el contador de comentarios */}
+            {/* Removemos el botón de completar de aquí */}
             <button
               className="text-gray-500 hover:text-gray-700 p-1 rounded-full hover:bg-gray-100 relative"
               onClick={handleCommentsClick}

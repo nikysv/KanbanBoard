@@ -7,6 +7,7 @@ import TaskModal from "../Modals/TaskModal";
 import TaskCard from "../Task/TaskCard";
 import ColumnModal from "../Modals/ColumnModal";
 import dayjs from "dayjs";
+import PhaseSequenceView from "../PhaseSequenceView/PhaseSequenceView";
 
 const DeleteColumnModal = ({
   isOpen,
@@ -69,10 +70,13 @@ const getPriorityLevel = (dueDate) => {
 const KanbanBoard = ({ data, filters, userType = "tigo" }) => {
   // Inicializar el estado usando los datos recibidos
   const [columns, setColumns] = useState(
-    data.columnas.map((col) => ({
+    data.columnas.map((col, index) => ({
+      ...col,
       id: col.id,
       title: col.titulo || col.title,
       userTypes: { tigo: true, externo: false },
+      position: index,
+      isCompleted: col.isCompleted || false,
     }))
   );
 
@@ -101,6 +105,7 @@ const KanbanBoard = ({ data, filters, userType = "tigo" }) => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [columnToDelete, setColumnToDelete] = useState(null);
   const [editingColumn, setEditingColumn] = useState(null);
+  const [showSequenceView, setShowSequenceView] = useState(false);
 
   const generateColor = (index, lightness = 80) => {
     const hue = (index * 137) % 360; // Espaciado uniforme en la rueda de colores
@@ -216,23 +221,124 @@ const KanbanBoard = ({ data, filters, userType = "tigo" }) => {
     }));
   };
 
+  // Agregar función para verificar si se puede completar una columna
+  const canCompleteColumn = (columnId) => {
+    const currentColumn = columns.find((col) => col.id === columnId);
+    if (!currentColumn) return false;
+
+    const previousColumn = columns.find(
+      (col) => col.position === currentColumn.position - 1
+    );
+    return !previousColumn || previousColumn.isCompleted;
+  };
+
+  // Modificar la función onDragEnd para mantener la secuencialidad
   const onDragEnd = (result) => {
     if (!result.destination) return;
 
-    const reorderedColumns = [...columns];
-    const [movedColumn] = reorderedColumns.splice(result.source.index, 1);
-    reorderedColumns.splice(result.destination.index, 0, movedColumn);
+    const newColumns = [...columns];
+    const [movedColumn] = newColumns.splice(result.source.index, 1);
 
-    setColumns(reorderedColumns);
+    // No permitir mover si hay columnas completadas después de la posición destino
+    const destinationIndex = result.destination.index;
+    const hasCompletedAfter = newColumns.some(
+      (col, index) => index >= destinationIndex && col.isCompleted
+    );
+
+    if (hasCompletedAfter) {
+      alert(
+        "No puedes mover columnas a una posición después de columnas completadas"
+      );
+      return;
+    }
+
+    newColumns.splice(destinationIndex, 0, movedColumn);
+
+    // Actualizar posiciones
+    newColumns.forEach((col, index) => {
+      col.position = index;
+    });
+
+    setColumns(newColumns);
   };
 
+  // Reemplazar completeColumn con checkColumnCompletion
+  const checkColumnCompletion = (columnId) => {
+    const columnTasks = tasks[columnId] || [];
+    if (columnTasks.length === 0) return false;
+
+    const allTasksCompleted = columnTasks.every((task) => task.isCompleted);
+
+    if (allTasksCompleted) {
+      const currentColumn = columns.find((col) => col.id === columnId);
+      const previousColumn = columns.find(
+        (col) => col.position === currentColumn.position - 1
+      );
+
+      if (!previousColumn || previousColumn.isCompleted) {
+        setColumns(
+          columns.map((col) =>
+            col.id === columnId ? { ...col, isCompleted: true } : col
+          )
+        );
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Agregar esta función para verificar si se pueden completar las tareas de una columna
+  const canCompleteTask = (columnId) => {
+    const currentColumn = columns.find((col) => col.id === columnId);
+    if (!currentColumn) return false;
+
+    // Si es la primera columna, siempre puede completar tareas
+    if (currentColumn.position === 0) return true;
+
+    // Verificar que todas las tareas de la columna anterior estén completadas
+    const previousColumn = columns.find(
+      (col) => col.position === currentColumn.position - 1
+    );
+    if (!previousColumn) return true;
+
+    const previousTasks = tasks[previousColumn.id] || [];
+    return previousTasks.every((task) => task.isCompleted);
+  };
+
+  // Modificar la función completeTask
   const completeTask = (taskId, columnId) => {
-    setTasks((prevTasks) => ({
-      ...prevTasks,
-      [columnId]: prevTasks[columnId].map((task) =>
-        task.id === taskId ? { ...task, isCompleted: true } : task
-      ),
-    }));
+    if (!canCompleteTask(columnId)) {
+      alert(
+        "No puedes completar esta tarea hasta que todas las tareas de la fase anterior estén completadas"
+      );
+      return;
+    }
+
+    setTasks((prevTasks) => {
+      const updatedTasks = {
+        ...prevTasks,
+        [columnId]: prevTasks[columnId].map((task) =>
+          task.id === taskId ? { ...task, isCompleted: true } : task
+        ),
+      };
+
+      // Verificar si todas las tareas de la columna están completadas
+      const allTasksCompleted = updatedTasks[columnId].every(
+        (task) => task.isCompleted
+      );
+      if (allTasksCompleted) {
+        setColumns((prevColumns) =>
+          prevColumns.map((col) =>
+            col.id === columnId ? { ...col, isCompleted: true } : col
+          )
+        );
+      }
+
+      // Forzar actualización del modal cerrándolo
+      setViewModalOpen(false);
+
+      return updatedTasks;
+    });
   };
 
   const handleSaveComments = (updatedTask) => {
@@ -296,14 +402,88 @@ const KanbanBoard = ({ data, filters, userType = "tigo" }) => {
     return true;
   };
 
+  const handleTaskUpdate = (updatedTask) => {
+    // Si la tarea se está descompletando
+    if (
+      !updatedTask.isCompleted &&
+      tasks[updatedTask.columnId].find((t) => t.id === updatedTask.id)
+        ?.isCompleted
+    ) {
+      // Descompletar la columna actual y todas las siguientes
+      const currentColumn = columns.find(
+        (col) => col.id === updatedTask.columnId
+      );
+
+      // Desmarcar todas las columnas siguientes como no completadas
+      setColumns((prevColumns) =>
+        prevColumns.map((col) => ({
+          ...col,
+          isCompleted:
+            col.position < currentColumn.position ? col.isCompleted : false,
+        }))
+      );
+
+      // Desmarcar todas las tareas de las columnas siguientes como no completadas
+      setTasks((prevTasks) => {
+        const updatedTasks = { ...prevTasks };
+        columns.forEach((col) => {
+          if (col.position >= currentColumn.position) {
+            updatedTasks[col.id] = prevTasks[col.id].map((task) => ({
+              ...task,
+              isCompleted: false,
+            }));
+          }
+        });
+        return updatedTasks;
+      });
+    } else {
+      // Actualizar solo la tarea específica
+      setTasks((prevTasks) => ({
+        ...prevTasks,
+        [updatedTask.columnId]: prevTasks[updatedTask.columnId].map((task) =>
+          task.id === updatedTask.id ? updatedTask : task
+        ),
+      }));
+    }
+  };
+
+  // Preparar datos para la vista de secuencia
+  const sequenceData = columns.map((col) => ({
+    ...col,
+    tasksCompleted:
+      tasks[col.id]?.filter((task) => task.isCompleted).length || 0,
+    totalTasks: tasks[col.id]?.length || 0,
+  }));
+
+  if (showSequenceView) {
+    return (
+      <PhaseSequenceView
+        columns={sequenceData}
+        onBack={() => setShowSequenceView(false)}
+      />
+    );
+  }
+
   return (
     <div className="container mx-auto p-5">
-      <button
-        onClick={openColumnModal}
-        className="mb-4 px-4 py-2 bg-sky-500 text-white rounded-md hover:bg-slate-400"
-      >
-        + Agregar Columna
-      </button>
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex gap-2">
+          <button
+            onClick={openColumnModal}
+            className="px-4 py-2 bg-sky-500 text-white rounded-md hover:bg-slate-400"
+          >
+            + Agregar Columna
+          </button>
+          <button
+            onClick={() => setShowSequenceView(true)}
+            className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md hover:bg-blue-200 flex items-center gap-2"
+          >
+            <span>📋</span>
+            Ver Secuencia de Fases
+          </button>
+        </div>
+        {/* Aquí van los filtros existentes */}
+      </div>
       <DragDropContext onDragEnd={onDragEnd}>
         <Droppable droppableId="columns" direction="horizontal">
           {(provided) => (
@@ -323,7 +503,10 @@ const KanbanBoard = ({ data, filters, userType = "tigo" }) => {
                       ref={provided.innerRef}
                       {...provided.draggableProps}
                       {...provided.dragHandleProps}
-                      className="bg-stone-100 p-4 rounded-lg shadow-md relative flex flex-col w-full h-[280px]"
+                      className={`bg-stone-100 p-4 rounded-lg shadow-md relative flex flex-col w-full h-[280px] 
+                      ${
+                        column.isCompleted ? "border-l-4 border-green-500" : ""
+                      }`}
                     >
                       {/* Header con título, número y eliminar */}
                       <div className="flex justify-between items-center mb-2">
@@ -376,6 +559,7 @@ const KanbanBoard = ({ data, filters, userType = "tigo" }) => {
                             onView={openViewModal}
                             onDelete={(taskId) => deleteTask(taskId, column.id)}
                             onOpenComments={handleOpenComments}
+                            canComplete={canCompleteTask(column.id)}
                           />
                         ))}
                       </div>
@@ -408,7 +592,7 @@ const KanbanBoard = ({ data, filters, userType = "tigo" }) => {
         isOpen={viewModalOpen}
         onClose={closeViewModal}
         task={selectedTask}
-        onSave={updateTask}
+        onSave={handleTaskUpdate}
         onComplete={completeTask}
         onOpenComments={handleOpenComments}
       />

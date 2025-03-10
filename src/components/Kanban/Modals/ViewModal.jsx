@@ -6,6 +6,7 @@ import TaskComments from "../Task/TaskCommentss";
 import TaskPriority from "../Task/TaskPriority";
 import useFileManager from "../../../hooks/useFileManager";
 import FilePreviewModal from "../Files/FilePreviewModal";
+import CompleteTaskModal from "./CompleteTaskModal";
 
 const ViewModal = ({
   isOpen,
@@ -46,6 +47,7 @@ const ViewModal = ({
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const { handleFileUpload, downloadFile } = useFileManager([]);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
 
   // Resetear archivos locales cuando cambia la tarea
   useEffect(() => {
@@ -54,6 +56,30 @@ const ViewModal = ({
   }, [task.files]);
 
   const handleAddFiles = async (event) => {
+    if (isCompleted) {
+      // Notificar que esto descompleta la tarea y las fases
+      const confirm = window.confirm(
+        "Agregar nuevos archivos descompleta esta tarea y las fases relacionadas. ¿Deseas continuar?"
+      );
+      if (confirm) {
+        setIsCompleted(false);
+        // Actualizar el estado de la tarea y propagar el cambio
+        onSave({
+          ...task,
+          title,
+          description,
+          dueDate,
+          isCompleted: false, // Forzar descompletado
+          comments,
+          checklist,
+          assignees,
+          files: localFiles,
+        });
+      } else {
+        event.target.value = null;
+        return;
+      }
+    }
     const newFiles = await handleFileUpload(event.target.files);
     setLocalFiles((prev) => [...prev, ...newFiles]);
   };
@@ -115,6 +141,11 @@ const ViewModal = ({
     console.log("Descargando:", file);
   };
 
+  const handleCompleteTask = () => {
+    setShowCompleteModal(false);
+    onComplete(task.id, task.columnId);
+  };
+
   return (
     <>
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
@@ -144,20 +175,6 @@ const ViewModal = ({
 
           {/* Contenido del modal */}
           <div className="p-6">
-            {/* Estado de completado */}
-            <div className="mb-4">
-              <button
-                onClick={() => setIsCompleted(!isCompleted)}
-                className={`w-full py-2 px-4 rounded-md font-medium transition-colors ${
-                  isCompleted
-                    ? "bg-green-100 text-green-800 hover:bg-green-200 border border-green-300"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300"
-                }`}
-              >
-                {isCompleted ? "✓ Tarea Completada" : "Marcar como completada"}
-              </button>
-            </div>
-
             {/* Título */}
             <div className="mb-4">
               <label className="block text-sm font-medium mb-1">Título</label>
@@ -261,6 +278,7 @@ const ViewModal = ({
             <div className="mb-4 border-t pt-4">
               <div className="flex justify-between items-center mb-2">
                 <label className="text-sm font-medium">Archivos adjuntos</label>
+                {/* Permitir subir archivos incluso si la tarea está completada */}
                 <input
                   type="file"
                   onChange={handleAddFiles}
@@ -273,7 +291,18 @@ const ViewModal = ({
                     hover:file:bg-blue-100"
                 />
               </div>
-              <div className="bg-gray-50 p-3 rounded-lg">
+              {/* Solo deshabilitar edición de campos críticos cuando está completada */}
+              <div
+                className={`bg-gray-50 p-3 rounded-lg ${
+                  isCompleted ? "border-green-200 border" : ""
+                }`}
+              >
+                {isCompleted && (
+                  <div className="mb-2 text-sm text-green-600 bg-green-50 p-2 rounded">
+                    ✓ Tarea completada - Se pueden seguir agregando archivos y
+                    comentarios
+                  </div>
+                )}
                 <div className="flex flex-col gap-2">
                   {localFiles && localFiles.length > 0 ? (
                     localFiles.map((file) => (
@@ -326,36 +355,64 @@ const ViewModal = ({
               onAddComment={handleAddComment}
               newComment={newComment}
               setNewComment={setNewComment}
+              isTaskCompleted={isCompleted}
             />
           </div>
 
           {/* Footer con botones */}
           <div className="sticky bottom-0 bg-white px-6 py-4 border-t flex justify-end gap-2">
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={() => {
-                onSave({
-                  ...task,
-                  title,
-                  description,
-                  dueDate,
-                  isCompleted,
-                  comments,
-                  checklist,
-                  assignees,
-                  files: localFiles,
-                });
-                onClose();
-              }}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            >
-              Guardar
-            </button>
+            <div className="flex justify-between items-center w-full">
+              <div>
+                {!task.isCompleted ? (
+                  <button
+                    onClick={() => setShowCompleteModal(true)}
+                    disabled={!task.canComplete}
+                    className={`px-4 py-2 rounded ${
+                      task.canComplete
+                        ? "bg-green-500 hover:bg-green-600 text-white"
+                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                    }`}
+                    title={
+                      task.canComplete
+                        ? "Completar tarea"
+                        : "Completa las tareas de la fase anterior primero"
+                    }
+                  >
+                    Completar tarea
+                  </button>
+                ) : (
+                  <span className="text-green-600">✓ Tarea completada</span>
+                )}
+              </div>
+              {/* Botones de cancelar y guardar a la derecha */}
+              <div className="flex gap-2">
+                <button
+                  onClick={onClose}
+                  className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-md"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => {
+                    onSave({
+                      ...task,
+                      title,
+                      description,
+                      dueDate,
+                      isCompleted,
+                      comments,
+                      checklist,
+                      assignees,
+                      files: localFiles,
+                    });
+                    onClose();
+                  }}
+                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                >
+                  Guardar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -366,6 +423,14 @@ const ViewModal = ({
         onClose={() => setShowPreviewModal(false)}
         files={task.archivos || []}
         initialSelectedFile={selectedFile}
+      />
+
+      {/* Modal de confirmación para completar tarea */}
+      <CompleteTaskModal
+        isOpen={showCompleteModal}
+        onClose={() => setShowCompleteModal(false)}
+        onConfirm={handleCompleteTask}
+        taskTitle={title}
       />
     </>
   );

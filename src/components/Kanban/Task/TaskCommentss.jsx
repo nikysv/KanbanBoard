@@ -5,6 +5,7 @@ const TaskComments = ({
   onAddComment,
   newComment = "",
   setNewComment,
+  isTaskCompleted,
 }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -51,7 +52,11 @@ const TaskComments = ({
             type="text"
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Escribe un comentario..."
+            placeholder={
+              isTaskCompleted
+                ? "Agregar comentario (tarea completada)"
+                : "Agregar comentario"
+            }
             className="w-full p-2 pr-20 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
