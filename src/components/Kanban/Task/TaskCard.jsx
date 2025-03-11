@@ -1,6 +1,6 @@
-import dayjs from "dayjs"; // Manejo de fechas en JS
-import relativeTime from "dayjs/plugin/relativeTime"; // Para calcular tiempos relativos
-import "dayjs/locale/es"; // Español
+import dayjs from "dayjs";
+import relativeTime from "dayjs/plugin/relativeTime";
+import "dayjs/locale/es";
 import TrashIcon from "../../icons/trash";
 import { useCallback, useState } from "react";
 import UserInitials from "./UserInitials";

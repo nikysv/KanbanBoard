@@ -1,37 +1,39 @@
+import React from 'react';
+
 const TaskChecklist = ({
   checklist,
   handleToggleChecklistItem,
   newChecklistItem,
   setNewChecklistItem,
-  handleAddChecklistItem,
+  handleAddChecklistItem
 }) => {
   return (
-    <div className="space-y-2">
-      <h3 className="font-medium">Checklist</h3>
-
-      {/* Lista de items */}
-      <div className="space-y-2">
-        {checklist?.map((item, index) => (
-          <div
-            key={`checklist-${index}-${item.text}`}
-            className="flex items-center gap-2"
-          >
-            <input
-              type="checkbox"
-              checked={item.completed}
-              onChange={() => handleToggleChecklistItem(index)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span
-              className={item.completed ? "line-through text-gray-500" : ""}
-            >
-              {item.text}
-            </span>
-          </div>
-        ))}
+    <div className="space-y-2" role="group" aria-label="Lista de subtareas">
+      <h4 className="font-medium">Subtareas</h4>
+      <div className="space-y-2 mb-3">
+        {(checklist || []).map((item, index) => {
+          const itemId = `checklist-item-${index}-${item.id || index}`;
+          return (
+            <div key={itemId} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
+              <input
+                type="checkbox"
+                id={itemId}
+                name={itemId}
+                checked={item.completed || false}
+                onChange={() => handleToggleChecklistItem(index)}
+                className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                aria-label={`Marcar subtarea: ${item.text}`}
+              />
+              <label 
+                htmlFor={itemId}
+                className={`flex-1 cursor-pointer ${item.completed ? 'line-through text-gray-500' : ''}`}
+              >
+                {item.text}
+              </label>
+            </div>
+          );
+        })}
       </div>
-
-      {/* Input para nuevo item */}
       <div className="flex gap-2 mt-2">
         <input
           type="text"
