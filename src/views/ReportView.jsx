@@ -1,31 +1,89 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import useKanbanStore from "../stores/useKanbanStore";
+import FilePreviewModal from "../components/Kanban/Files/FilePreviewModal";
+import { useState } from "react";
+
+const TaskFiles = ({ tarea }) => {
+  return (
+    <div className="mt-3">
+      <strong className="text-sm">Archivos adjuntos:</strong>
+      <div className="mt-2 space-y-2">
+        {tarea.archivos?.map((archivo, idx) => (
+          <div
+            key={`${archivo}-${idx}`}
+            className="flex items-center justify-between p-2 bg-white rounded border"
+          >
+            <div className="flex items-center gap-2">
+              <span className="text-xl">
+                {archivo.endsWith(".pdf")
+                  ? "📄"
+                  : archivo.endsWith(".doc") || archivo.endsWith(".docx")
+                  ? "📝"
+                  : archivo.endsWith(".xls") || archivo.endsWith(".xlsx")
+                  ? "📊"
+                  : "📎"}
+              </span>
+              <div>
+                <p className="text-sm font-medium">{archivo}</p>
+                <p className="text-xs text-gray-500">
+                  Subido por {tarea.participantes?.[0] || "Usuario"}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button className="text-blue-600 hover:text-blue-800">⬇️</button>
+              <button className="text-blue-600 hover:text-blue-800">👁️</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+const TaskDetails = ({ tarea }) => (
+  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+    <h3 className="text-lg font-medium">{tarea.titulo}</h3>
+    <div className="text-sm text-gray-600">
+      <strong>Prioridad:</strong> {tarea.prioridad} | <strong>Fecha:</strong>{" "}
+      {tarea.fecha} | <strong>Estado:</strong> {tarea.estado}
+    </div>
+    {tarea.archivos?.length > 0 && <TaskFiles tarea={tarea} />}
+  </div>
+);
+
+const ColumnSection = ({ columna }) => (
+  <div className="mb-6 p-4 border rounded-lg shadow-md">
+    <h2 className="text-xl font-semibold mb-2">{columna.titulo}</h2>
+    <hr className="mb-4" />
+    <div className="space-y-4">
+      {columna.tareas?.map((tarea, index) => (
+        <TaskDetails key={tarea.id || index} tarea={tarea} />
+      ))}
+    </div>
+  </div>
+);
 
 const ReportView = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { sites } = useKanbanStore();
-  const kanbanData = location.state?.kanbanData;
+  const [selectedFile, setSelectedFile] = useState(null);
 
-  // Si no hay datos en el state, intentar obtener del store
+  // Obtener datos del sitio
   const siteData =
-    kanbanData ||
+    location.state?.kanbanData ||
     (() => {
       const siteId = location.pathname.split("/").pop();
       const site = sites.find((s) => s.id === siteId);
-      if (!site) return null;
-
-      return {
-        sitio: site.name,
-        id: site.id,
-        columnas: site.data.columnas,
-      };
+      return site
+        ? {
+            sitio: site.name,
+            id: site.id,
+            columnas: site.data.columnas,
+          }
+        : null;
     })();
-
-  const handleReturn = () => {
-    // Volver al tablero específico en lugar del dashboard principal
-    navigate(`/kanban/${siteData.id}`);
-  };
 
   if (!siteData || !siteData.columnas) {
     return (
@@ -45,11 +103,10 @@ const ReportView = () => {
 
   return (
     <div className="p-10">
-      {/* Header con título y botón de volver */}
       <div className="flex justify-between items-center mb-4">
         <h1 className="text-3xl font-bold">📊 Reporte de Tableros</h1>
         <button
-          onClick={handleReturn}
+          onClick={() => navigate(`/kanban/${siteData.id}`)}
           className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
         >
           Volver al Tablero
@@ -62,63 +119,15 @@ const ReportView = () => {
       </p>
 
       {siteData.columnas.map((columna, index) => (
-        <div key={index} className="mb-6 p-4 border rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-2">{columna.titulo}</h2>
-          <hr className="mb-2" />
-          {!columna.tareas || columna.tareas.length === 0 ? (
-            <p className="text-gray-500">No hay tareas en esta columna.</p>
-          ) : (
-            columna.tareas.map((tarea, i) => (
-              <div key={i} className="mb-4 p-3 bg-gray-50 rounded-lg">
-                <h3 className="text-lg font-medium">{tarea.titulo}</h3>
-                <p className="text-sm text-gray-600">
-                  <strong>Prioridad:</strong> {tarea.prioridad} |{" "}
-                  <strong>Fecha:</strong> {tarea.fecha} |{" "}
-                  <strong>Estado:</strong> {tarea.estado}
-                </p>
-
-                {tarea.participantes?.length > 0 && (
-                  <p className="text-sm mt-2">
-                    <strong>Participantes:</strong>{" "}
-                    {tarea.participantes.join(", ")}
-                  </p>
-                )}
-
-                {tarea.comentarios?.length > 0 && (
-                  <p className="text-sm mt-2">
-                    <strong>Comentarios:</strong> {tarea.comentarios.join(", ")}
-                  </p>
-                )}
-
-                {tarea.archivos?.length > 0 && (
-                  <p className="text-sm mt-2">
-                    <strong>Archivos adjuntos:</strong>{" "}
-                    {tarea.archivos.join(", ")}
-                  </p>
-                )}
-
-                {tarea.checklist?.length > 0 && (
-                  <div className="mt-2">
-                    <strong>Checklist:</strong>
-                    <ul className="list-disc list-inside">
-                      {tarea.checklist.map((item, idx) => (
-                        <li
-                          key={idx}
-                          className={
-                            item.completed ? "text-green-600" : "text-red-600"
-                          }
-                        >
-                          {item.text} {item.completed ? "✅" : "❌"}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ))
-          )}
-        </div>
+        <ColumnSection key={columna.id || index} columna={columna} />
       ))}
+
+      <FilePreviewModal
+        isOpen={Boolean(selectedFile)}
+        onClose={() => setSelectedFile(null)}
+        files={selectedFile ? [selectedFile] : []}
+        initialSelectedFile={selectedFile}
+      />
     </div>
   );
 };

@@ -1,11 +1,11 @@
-import React from 'react';
+import React from "react";
 
 const TaskChecklist = ({
   checklist,
   handleToggleChecklistItem,
   newChecklistItem,
   setNewChecklistItem,
-  handleAddChecklistItem
+  handleAddChecklistItem,
 }) => {
   return (
     <div className="space-y-2" role="group" aria-label="Lista de subtareas">
@@ -14,7 +14,10 @@ const TaskChecklist = ({
         {(checklist || []).map((item, index) => {
           const itemId = `checklist-item-${index}-${item.id || index}`;
           return (
-            <div key={itemId} className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded">
+            <div
+              key={itemId}
+              className="flex items-center gap-2 p-2 hover:bg-gray-50 rounded"
+            >
               <input
                 type="checkbox"
                 id={itemId}
@@ -24,9 +27,11 @@ const TaskChecklist = ({
                 className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 aria-label={`Marcar subtarea: ${item.text}`}
               />
-              <label 
+              <label
                 htmlFor={itemId}
-                className={`flex-1 cursor-pointer ${item.completed ? 'line-through text-gray-500' : ''}`}
+                className={`flex-1 cursor-pointer ${
+                  item.completed ? "line-through text-gray-500" : ""
+                }`}
               >
                 {item.text}
               </label>

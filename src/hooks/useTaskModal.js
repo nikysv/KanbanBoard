@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState } from "react";
 
 const useTaskModal = (task) => {
   const initialTask = task || {};
@@ -6,7 +6,9 @@ const useTaskModal = (task) => {
   const [title, setTitle] = useState(initialTask.title || "");
   const [description, setDescription] = useState(initialTask.description || "");
   const [dueDate, setDueDate] = useState(initialTask.dueDate || "");
-  const [isCompleted, setIsCompleted] = useState(initialTask.isCompleted || false);
+  const [isCompleted, setIsCompleted] = useState(
+    initialTask.isCompleted || false
+  );
   const [comments, setComments] = useState(initialTask.comments || []);
   const [newComment, setNewComment] = useState("");
   const [checklist, setChecklist] = useState(initialTask.checklist || []);
@@ -15,11 +17,11 @@ const useTaskModal = (task) => {
   const [newAssignee, setNewAssignee] = useState("");
 
   const handleToggleChecklistItem = (index) => {
-    setChecklist(prevChecklist => {
+    setChecklist((prevChecklist) => {
       const updatedChecklist = [...prevChecklist];
       updatedChecklist[index] = {
         ...updatedChecklist[index],
-        completed: !updatedChecklist[index].completed
+        completed: !updatedChecklist[index].completed,
       };
       return updatedChecklist;
     });
@@ -28,15 +30,15 @@ const useTaskModal = (task) => {
   const handleAddChecklistItem = () => {
     if (!newChecklistItem.trim()) return;
 
-    setChecklist(prev => [
+    setChecklist((prev) => [
       ...prev,
       {
         id: `checklist-${Date.now()}`,
         text: newChecklistItem,
-        completed: false
-      }
+        completed: false,
+      },
     ]);
-    setNewChecklistItem('');
+    setNewChecklistItem("");
   };
 
   const handleAddComment = (commentText) => {
@@ -46,12 +48,12 @@ const useTaskModal = (task) => {
       author: "Usuario",
       timestamp: new Date().toISOString(),
     };
-    setComments(prev => [...prev, newCommentObj]);
+    setComments((prev) => [...prev, newCommentObj]);
   };
 
   const handleAddAssignee = () => {
     if (!newAssignee.trim()) return;
-    setAssignees(prev => [...prev, newAssignee]);
+    setAssignees((prev) => [...prev, newAssignee]);
     setNewAssignee("");
   };
 

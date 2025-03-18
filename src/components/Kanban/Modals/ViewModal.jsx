@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import useTaskModal from "../../../hooks/useTaskModal";
 import TaskAssignees from "../Task/TaskAssignees";
 import TaskChecklist from "../Task/TaskCheckList";
@@ -16,7 +16,11 @@ const ViewModal = ({
   onComplete,
   onOpenComments,
 }) => {
-  if (!isOpen || !task) return null;
+  const [localFiles, setLocalFiles] = useState([]);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const { handleFileUpload } = useFileManager([]);
 
   const {
     title,
@@ -30,7 +34,6 @@ const ViewModal = ({
     comments,
     newComment,
     setNewComment,
-    handleAddComment: originalHandleAddComment,
     checklist,
     newChecklistItem,
     setNewChecklistItem,
@@ -41,35 +44,38 @@ const ViewModal = ({
     newAssignee,
     setNewAssignee,
     handleAddAssignee,
-  } = useTaskModal(task);
+  } = useTaskModal(task || {});
 
-  const [localFiles, setLocalFiles] = useState(task.files || []);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const { handleFileUpload, downloadFile } = useFileManager([]);
-  const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const generateId = useMemo(() => {
+    let counter = 0;
+    return (prefix) => {
+      counter += 1;
+      return `${prefix}-${counter}`;
+    };
+  }, []);
 
-  // Resetear archivos locales cuando cambia la tarea
   useEffect(() => {
-    setLocalFiles(task.files || []);
-    setSelectedFile(null);
-  }, [task.files]);
+    if (task?.files) {
+      setLocalFiles(task.files);
+      setSelectedFile(null);
+    }
+  }, [task?.files]);
+
+  if (!isOpen || !task) return null;
 
   const handleAddFiles = async (event) => {
     if (isCompleted) {
-      // Notificar que esto descompleta la tarea y las fases
       const confirm = window.confirm(
         "Agregar nuevos archivos descompleta esta tarea y las fases relacionadas. ¿Deseas continuar?"
       );
       if (confirm) {
         setIsCompleted(false);
-        // Actualizar el estado de la tarea y propagar el cambio
         onSave({
           ...task,
           title,
           description,
           dueDate,
-          isCompleted: false, // Forzar descompletado
+          isCompleted: false,
           comments,
           checklist,
           assignees,
@@ -89,7 +95,6 @@ const ViewModal = ({
   };
 
   const handleFileClick = (file) => {
-    // Aquí agregaríamos la lógica para previsualizar el archivo
     window.open(file.url, "_blank");
   };
 
@@ -137,7 +142,6 @@ const ViewModal = ({
 
   const handleDownloadFile = (e, file) => {
     e.stopPropagation();
-    // En un ambiente real, aquí iría la lógica de descarga
     console.log("Descargando:", file);
   };
 
@@ -150,7 +154,6 @@ const ViewModal = ({
     <>
       <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
         <div className="bg-white rounded-lg shadow-lg w-[600px] max-h-[90vh] overflow-y-auto relative">
-          {/* Header con título y botón de cerrar */}
           <div className="sticky top-0 bg-white px-6 py-4 border-b flex justify-between items-center">
             <h2 className="text-xl font-bold">Editar Tarea</h2>
             <button
@@ -173,9 +176,7 @@ const ViewModal = ({
             </button>
           </div>
 
-          {/* Contenido del modal */}
           <div className="p-6">
-            {/* Título */}
             <div className="mb-4">
               <label className="block text-sm font-medium mb-1">Título</label>
               <input
@@ -188,7 +189,6 @@ const ViewModal = ({
               />
             </div>
 
-            {/* Fecha y Prioridad en la misma fila */}
             <div className="mb-4 flex items-center gap-3">
               <input
                 type="date"
@@ -204,7 +204,6 @@ const ViewModal = ({
               <TaskPriority dueDate={dueDate} isCompleted={isCompleted} />
             </div>
 
-            {/* Descripción */}
             <div className="mb-4">
               <label className="block text-sm font-medium mb-1">
                 Descripción
@@ -218,7 +217,6 @@ const ViewModal = ({
               />
             </div>
 
-            {/* Checklist */}
             <div className="mb-4">
               <TaskChecklist
                 checklist={checklist}
@@ -229,56 +227,53 @@ const ViewModal = ({
               />
             </div>
 
-            {/* Archivos */}
             <div className="mt-4 border-t pt-4">
               <h4 className="font-medium mb-2">Archivos adjuntos:</h4>
               <div className="space-y-2">
-                {task.archivos &&
-                  task.archivos.map((archivo, idx) => (
+                {(task.archivos || []).map((archivo) => (
+                  <div
+                    key={generateId("archivo")}
+                    className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  >
                     <div
-                      key={`file-${idx}-${archivo}`}
-                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                      className="flex items-center gap-2 cursor-pointer"
+                      onClick={() => handlePreviewFile(archivo)}
                     >
-                      <div
-                        className="flex items-center gap-2 cursor-pointer"
-                        onClick={() => handlePreviewFile(archivo)}
-                      >
-                        <span className="text-2xl">
-                          {archivo.endsWith(".pdf")
-                            ? "📄"
-                            : archivo.endsWith(".docx")
-                            ? "📝"
-                            : archivo.endsWith(".xlsx")
-                            ? "📊"
-                            : "📎"}
-                        </span>
-                        <span className="font-medium">{archivo}</span>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={(e) => handleDownloadFile(e, archivo)}
-                          className="text-blue-600 hover:text-blue-800"
-                          title="Descargar archivo"
-                        >
-                          ⬇️
-                        </button>
-                        <button
-                          onClick={() => handlePreviewFile(archivo)}
-                          className="text-blue-600 hover:text-blue-800"
-                          title="Ver archivo"
-                        >
-                          👁️
-                        </button>
-                      </div>
+                      <span className="text-2xl">
+                        {archivo.endsWith(".pdf")
+                          ? "📄"
+                          : archivo.endsWith(".docx")
+                          ? "📝"
+                          : archivo.endsWith(".xlsx")
+                          ? "📊"
+                          : "📎"}
+                      </span>
+                      <span className="font-medium">{archivo}</span>
                     </div>
-                  ))}
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => handleDownloadFile(e, archivo)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Descargar archivo"
+                      >
+                        ⬇️
+                      </button>
+                      <button
+                        onClick={() => handlePreviewFile(archivo)}
+                        className="text-blue-600 hover:text-blue-800"
+                        title="Ver archivo"
+                      >
+                        👁️
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
             <div className="mb-4 border-t pt-4">
               <div className="flex justify-between items-center mb-2">
                 <label className="text-sm font-medium">Archivos adjuntos</label>
-                {/* Permitir subir archivos incluso si la tarea está completada */}
                 <input
                   type="file"
                   onChange={handleAddFiles}
@@ -291,7 +286,6 @@ const ViewModal = ({
                     hover:file:bg-blue-100"
                 />
               </div>
-              {/* Solo deshabilitar edición de campos críticos cuando está completada */}
               <div
                 className={`bg-gray-50 p-3 rounded-lg ${
                   isCompleted ? "border-green-200 border" : ""
@@ -307,7 +301,7 @@ const ViewModal = ({
                   {localFiles && localFiles.length > 0 ? (
                     localFiles.map((file) => (
                       <div
-                        key={file.id}
+                        key={file.id || generateId("file")}
                         className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors"
                       >
                         <div className="flex items-center gap-3">
@@ -338,7 +332,6 @@ const ViewModal = ({
               </div>
             </div>
 
-            {/* Asignación de usuarios */}
             <div className="mb-4">
               <TaskAssignees
                 assignees={assignees}
@@ -349,7 +342,6 @@ const ViewModal = ({
               />
             </div>
 
-            {/* Comentarios */}
             <TaskComments
               comments={comments}
               onAddComment={handleAddComment}
@@ -359,7 +351,6 @@ const ViewModal = ({
             />
           </div>
 
-          {/* Footer con botones */}
           <div className="sticky bottom-0 bg-white px-6 py-4 border-t flex justify-end gap-2">
             <div className="flex justify-between items-center w-full">
               <div>
@@ -384,7 +375,6 @@ const ViewModal = ({
                   <span className="text-green-600">✓ Tarea completada</span>
                 )}
               </div>
-              {/* Botones de cancelar y guardar a la derecha */}
               <div className="flex gap-2">
                 <button
                   onClick={onClose}
@@ -417,7 +407,6 @@ const ViewModal = ({
         </div>
       </div>
 
-      {/* Modal de previsualización de archivos */}
       <FilePreviewModal
         isOpen={showPreviewModal}
         onClose={() => setShowPreviewModal(false)}
@@ -425,7 +414,6 @@ const ViewModal = ({
         initialSelectedFile={selectedFile}
       />
 
-      {/* Modal de confirmación para completar tarea */}
       <CompleteTaskModal
         isOpen={showCompleteModal}
         onClose={() => setShowCompleteModal(false)}
